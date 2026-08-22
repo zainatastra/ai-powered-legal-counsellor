@@ -45,19 +45,45 @@ function App() {
   };
 
   useEffect(() => {
-  const style = document.createElement('style');
-  style.innerHTML = `
-    @keyframes fadeInOverlay {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    @keyframes fadeInModal {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  `;
-  document.head.appendChild(style);
-}, []);
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes fadeInOverlay {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes fadeInModal {
+        from { opacity: 0; transform: translateY(12px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .alc-nav-button {
+        transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
+      }
+
+      .alc-nav-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(13, 31, 55, 0.16);
+      }
+
+      .alc-nav-button:active {
+        transform: translateY(0);
+      }
+
+      .alc-secondary-button:hover {
+        background: #eef2f7 !important;
+        border-color: #cbd5e1 !important;
+      }
+
+      .alc-primary-button:hover {
+        background: #172a46 !important;
+        box-shadow: 0 8px 20px rgba(13, 31, 55, 0.18);
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => document.head.removeChild(style);
+  }, []);
 
   if (loading) {
     return <Loading />;
@@ -67,39 +93,75 @@ function App() {
     <div style={styles.wrapper}>
       {!user && (
         <div style={styles.buttonGroup}>
-          <button onClick={() => handlePageChange('signup')} style={styles.glowButton}>Signup</button>
-          <button onClick={() => handlePageChange('login')} style={styles.glowButton}>Login</button>
           <button
-            onClick={() => {
-              setModalMessage('Please login first to use the chatbot.');
-              setShowLoginModal(true);
-            }}
+            onClick={() => handlePageChange('signup')}
             style={styles.glowButton}
+            className="alc-nav-button"
           >
-            Chatbot
+            Sign up
           </button>
+
+          <button
+            onClick={() => handlePageChange('login')}
+            style={styles.glowButton}
+            className="alc-nav-button"
+          >
+            Log in
+          </button>
+
           <button
             onClick={() => {
-              setModalMessage('Please login first to view lawyers section.');
+              setModalMessage('Please log in first to use the legal assistant.');
               setShowLoginModal(true);
             }}
             style={styles.glowButton}
+            className="alc-nav-button"
           >
-            Lawyers Section
+            Legal Assistant
+          </button>
+
+          <button
+            onClick={() => {
+              setModalMessage('Please log in first to view the lawyers section.');
+              setShowLoginModal(true);
+            }}
+            style={styles.glowButton}
+            className="alc-nav-button"
+          >
+            Lawyers
           </button>
         </div>
       )}
 
       {user && page === 'chatbot' && (
         <div style={styles.topRight}>
-          <button onClick={() => handlePageChange('lawyers')} style={styles.glowButton}>Lawyers Section</button>
+          <button
+            onClick={() => handlePageChange('lawyers')}
+            style={styles.glowButton}
+            className="alc-nav-button"
+          >
+            Lawyers
+          </button>
         </div>
       )}
 
       {user && page === 'lawyers' && (
         <div style={styles.topRight}>
-          <button onClick={() => handlePageChange('chatbot')} style={styles.glowButton}>Chatbot</button>
-          <button onClick={handleLogout} style={styles.glowButton}>Logout</button>
+          <button
+            onClick={() => handlePageChange('chatbot')}
+            style={styles.glowButton}
+            className="alc-nav-button"
+          >
+            Legal Assistant
+          </button>
+
+          <button
+            onClick={handleLogout}
+            style={styles.logoutButton}
+            className="alc-nav-button"
+          >
+            Sign out
+          </button>
         </div>
       )}
 
@@ -110,23 +172,53 @@ function App() {
         </>
       ) : (
         <>
-          {page === 'signup' && <Signup onSignupComplete={() => setPage('login')} />}
-          {page === 'login' && <Login onLoginSuccess={() => setPage('chatbot')} onForgotPassword={() => setPage('resetPassword')} />}
-          {page === 'resetPassword' && <ResetPassword onBackToLogin={() => setPage('login')} />}
+          {page === 'signup' && (
+            <Signup onSignupComplete={() => setPage('login')} />
+          )}
+
+          {page === 'login' && (
+            <Login
+              onLoginSuccess={() => setPage('chatbot')}
+              onForgotPassword={() => setPage('resetPassword')}
+            />
+          )}
+
+          {page === 'resetPassword' && (
+            <ResetPassword onBackToLogin={() => setPage('login')} />
+          )}
         </>
       )}
 
       {showLoginModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
-            <h2 style={styles.modalHeading}>Login Required</h2>
+            <div style={styles.modalIcon}>⚖</div>
+
+            <div style={styles.modalEyebrow}>ACCESS REQUIRED</div>
+
+            <h2 style={styles.modalHeading}>Please log in</h2>
+
             <p style={styles.modalMessage}>{modalMessage}</p>
+
             <div style={styles.modalButtons}>
-              <button onClick={() => setShowLoginModal(false)} style={styles.cancelBtn}>Cancel</button>
-              <button onClick={() => {
-                setShowLoginModal(false);
-                setPage('login');
-              }} style={styles.confirmBtn}>Login</button>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                style={styles.cancelBtn}
+                className="alc-secondary-button"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowLoginModal(false);
+                  setPage('login');
+                }}
+                style={styles.confirmBtn}
+                className="alc-primary-button"
+              >
+                Log in
+              </button>
             </div>
           </div>
         </div>
@@ -139,104 +231,175 @@ const styles = {
   wrapper: {
     position: 'relative',
     minHeight: '100vh',
-    background: 'transparent'
+    background: 'transparent',
+    color: '#0d1f37',
+    fontFamily: 'Saira, sans-serif'
   },
+
   buttonGroup: {
     position: 'absolute',
-    top: '20px',
+    top: '22px',
     left: '50%',
-    fontFamily: 'Jost',
     transform: 'translateX(-50%)',
     display: 'flex',
-    gap: '15px',
+    gap: '9px',
     zIndex: 10,
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: '6px',
+    background: 'rgba(255, 255, 255, 0.86)',
+    border: '1px solid rgba(13, 31, 55, 0.09)',
+    borderRadius: '14px',
+    boxShadow: '0 8px 30px rgba(13, 31, 55, 0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)'
   },
+
   topRight: {
     position: 'absolute',
     top: '20px',
-    right: '30px',
+    right: '28px',
     display: 'flex',
-    gap: '15px',
+    gap: '9px',
     zIndex: 10,
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: '6px',
+    background: 'rgba(255, 255, 255, 0.88)',
+    border: '1px solid rgba(13, 31, 55, 0.09)',
+    borderRadius: '14px',
+    boxShadow: '0 8px 30px rgba(13, 31, 55, 0.08)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)'
   },
+
   glowButton: {
-    padding: '10px 25px',
-    borderRadius: '30px',
-    border: '1px solid #00f2ff',
-    backgroundColor: '#111',
-    color: '#00f2ff',
-    fontWeight: 'bold',
-    fontFamily: 'Saira',
+    padding: '10px 17px',
+    borderRadius: '9px',
+    border: '1px solid #d8dee8',
+    background: '#ffffff',
+    color: '#172a46',
+    fontWeight: '600',
+    fontSize: '13px',
+    fontFamily: 'Saira, sans-serif',
+    letterSpacing: '0.1px',
     cursor: 'pointer',
-    boxShadow: '0 0 20px #00f2ff',
-    transition: 'all 0.3s ease',
+    boxShadow: 'none',
     outline: 'none'
   },
-  // Modal Styles
+
+  logoutButton: {
+    padding: '10px 17px',
+    borderRadius: '9px',
+    border: '1px solid #e4cfc8',
+    background: '#fff9f7',
+    color: '#8f3f32',
+    fontWeight: '600',
+    fontSize: '13px',
+    fontFamily: 'Saira, sans-serif',
+    cursor: 'pointer',
+    boxShadow: 'none',
+    outline: 'none'
+  },
+
   modalOverlay: {
     position: 'fixed',
-    top: 0, left: 0,
+    inset: 0,
     width: '100vw',
     height: '100vh',
-    background: 'rgba(0, 0, 0, 0.5)',
-    backdropFilter: 'blur(15px)',
-    WebkitBackdropFilter: 'blur(15px)',
+    background: 'rgba(8, 19, 34, 0.42)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 9999,
-    animation: 'fadeInOverlay 0.3s ease forwards'
+    animation: 'fadeInOverlay 0.22s ease forwards',
+    padding: '24px',
+    boxSizing: 'border-box'
   },
+
   modalBox: {
-    background: 'rgba(0, 0, 0, 0.75)',
-    padding: '30px',
-    borderRadius: '18px',
-    border: '1px solid rgba(255,255,255,0.1)',
-    boxShadow: '0 0 30px rgba(0, 242, 255, 0.2)',
-    width: '90%',
-    maxWidth: '400px',
+    background: 'rgba(255, 255, 255, 0.97)',
+    padding: '34px',
+    borderRadius: '20px',
+    border: '1px solid rgba(13, 31, 55, 0.08)',
+    boxShadow: '0 24px 70px rgba(7, 20, 37, 0.22)',
+    width: '100%',
+    maxWidth: '420px',
     textAlign: 'center',
-    fontFamily: 'Saira',
+    fontFamily: 'Saira, sans-serif',
+    color: '#172a46',
     opacity: 0,
-    transform: 'translateY(-20px)',
-    animation: 'fadeInModal 0.3s ease forwards 0.1s'
+    transform: 'translateY(12px) scale(0.98)',
+    animation: 'fadeInModal 0.25s ease forwards 0.05s',
+    boxSizing: 'border-box'
   },
+
+  modalIcon: {
+    width: '46px',
+    height: '46px',
+    margin: '0 auto 16px',
+    borderRadius: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#eef2f7',
+    color: '#b28a42',
+    fontSize: '21px',
+    border: '1px solid #e0e6ee'
+  },
+
+  modalEyebrow: {
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '1.5px',
+    color: '#8b97a8',
+    marginBottom: '7px'
+  },
+
   modalHeading: {
-    color: '#ff4c4c',
-    fontSize: '22px',
-    marginBottom: '10px'
+    color: '#10243e',
+    fontSize: '24px',
+    lineHeight: 1.2,
+    fontWeight: '700',
+    margin: '0 0 10px'
   },
+
   modalMessage: {
-    color: '#fff',
-    fontSize: '16px',
-    marginBottom: '20px'
+    color: '#667386',
+    fontSize: '14px',
+    lineHeight: 1.6,
+    margin: '0 auto 24px',
+    maxWidth: '330px'
   },
+
   modalButtons: {
     display: 'flex',
     justifyContent: 'center',
-    gap: '15px'
+    gap: '10px'
   },
+
   cancelBtn: {
-    padding: '10px 20px',
-    backgroundColor: '#333',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
+    padding: '11px 22px',
+    background: '#f7f8fa',
+    color: '#405066',
+    border: '1px solid #dce2e9',
+    borderRadius: '9px',
     cursor: 'pointer',
-    fontFamily: 'Jost',
-    fontWeight: 'bold'
+    fontFamily: 'Saira, sans-serif',
+    fontWeight: '600',
+    fontSize: '13px'
   },
+
   confirmBtn: {
-    padding: '10px 20px',
-    backgroundColor: '#ff4c4c',
+    padding: '11px 24px',
+    background: '#10243e',
     color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
+    border: '1px solid #10243e',
+    borderRadius: '9px',
     cursor: 'pointer',
-    fontFamily: 'Jost',
-    fontWeight: 'bold'
+    fontFamily: 'Saira, sans-serif',
+    fontWeight: '600',
+    fontSize: '13px'
   }
 };
 

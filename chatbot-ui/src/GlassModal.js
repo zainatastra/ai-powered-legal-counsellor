@@ -4,14 +4,93 @@ import React from 'react';
 const GlassModal = ({ message, onConfirm, onCancel }) => {
   return (
     <div style={styles.overlay}>
-      <div style={styles.modal}>
-        <h2 style={styles.heading}>Login Required</h2>
+      <div className="legal-modal-box" style={styles.modal}>
+        <div style={styles.icon}>⚖</div>
+
+        <div style={styles.eyebrow}>ACCESS REQUIRED</div>
+
+        <h2 style={styles.heading}>Login required</h2>
+
         <p style={styles.text}>{message}</p>
-        <div style={styles.buttonGroup}>
-          <button style={styles.cancelBtn} onClick={onCancel}>Cancel</button>
-          <button style={styles.confirmBtn} onClick={onConfirm}>Login</button>
+
+        <div className="legal-modal-buttons" style={styles.buttonGroup}>
+          <button
+            style={styles.cancelBtn}
+            className="glass-modal-cancel"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+
+          <button
+            style={styles.confirmBtn}
+            className="glass-modal-confirm"
+            onClick={onConfirm}
+          >
+            Login
+          </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes legalModalOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes legalModalEnter {
+          from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .glass-modal-cancel,
+        .glass-modal-confirm {
+          transition:
+            background 180ms ease,
+            border-color 180ms ease,
+            color 180ms ease,
+            transform 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .glass-modal-cancel:hover {
+          background: #EEF2F7 !important;
+          border-color: #CBD5E1 !important;
+          transform: translateY(-1px);
+        }
+
+        .glass-modal-confirm:hover {
+          background: #172A46 !important;
+          border-color: #172A46 !important;
+          box-shadow: 0 8px 20px rgba(13, 31, 55, 0.18);
+          transform: translateY(-1px);
+        }
+
+        .glass-modal-cancel:active,
+        .glass-modal-confirm:active {
+          transform: translateY(0);
+        }
+
+        @media (max-width: 480px) {
+          .legal-modal-box {
+            padding: 28px 22px !important;
+          }
+
+          .legal-modal-buttons {
+            flex-direction: column-reverse !important;
+          }
+
+          .legal-modal-buttons button {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -19,60 +98,107 @@ const GlassModal = ({ message, onConfirm, onCancel }) => {
 const styles = {
   overlay: {
     position: 'fixed',
-    top: 0, left: 0, width: '100%', height: '100vh',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    backdropFilter: 'blur(15px)',
-    WebkitBackdropFilter: 'blur(15px)',
+    inset: 0,
+    width: '100%',
+    height: '100vh',
+    boxSizing: 'border-box',
+    background: 'rgba(8, 19, 34, 0.42)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
     zIndex: 9999,
     display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    padding: '24px',
+    animation: 'legalModalOverlay 220ms ease forwards'
   },
+
   modal: {
-    background: 'rgba(18,18,18,0.8)',
-    borderRadius: '18px',
-    padding: '30px 40px',
-    boxShadow: '0 0 30px rgba(0, 242, 255, 0.2)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    textAlign: 'center',
-    color: '#fff',
     width: '90%',
-    maxWidth: '400px',
-    fontFamily: 'Saira'
+    maxWidth: '420px',
+    boxSizing: 'border-box',
+    padding: '34px',
+    borderRadius: '20px',
+    background: 'rgba(255,255,255,0.97)',
+    border: '1px solid rgba(13,31,55,0.08)',
+    boxShadow: '0 24px 70px rgba(7,20,37,0.22)',
+    textAlign: 'center',
+    color: '#172A46',
+    fontFamily: "'Saira', 'Segoe UI', sans-serif",
+    animation: 'legalModalEnter 250ms ease forwards 50ms'
   },
+
+  icon: {
+    width: '48px',
+    height: '48px',
+    margin: '0 auto 15px',
+    borderRadius: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#EEF2F7',
+    border: '1px solid #E0E6EE',
+    color: '#B8924A',
+    fontSize: '22px'
+  },
+
+  eyebrow: {
+    marginBottom: '7px',
+    color: '#8B97A8',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '1.5px'
+  },
+
   heading: {
+    margin: '0 0 10px',
+    color: '#10243E',
+    fontFamily: "'Jost', sans-serif",
     fontSize: '24px',
-    marginBottom: '10px',
-    color: '#ff4c4c'
+    lineHeight: 1.2,
+    fontWeight: '700',
+    letterSpacing: '-0.4px'
   },
+
   text: {
-    fontSize: '16px',
-    marginBottom: '20px'
+    maxWidth: '330px',
+    margin: '0 auto 24px',
+    color: '#667386',
+    fontSize: '14px',
+    lineHeight: 1.6
   },
+
   buttonGroup: {
     display: 'flex',
     justifyContent: 'center',
-    gap: '15px'
+    gap: '10px'
   },
+
   cancelBtn: {
-    padding: '10px 20px',
-    backgroundColor: '#333',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
+    minWidth: '96px',
+    padding: '11px 20px',
+    background: '#F7F8FA',
+    color: '#405066',
+    border: '1px solid #DCE2E9',
+    borderRadius: '9px',
     cursor: 'pointer',
-    fontFamily: 'Jost',
-    fontWeight: 'bold'
+    fontFamily: "'Jost', sans-serif",
+    fontWeight: '600',
+    fontSize: '13px'
   },
+
   confirmBtn: {
-    padding: '10px 20px',
-    backgroundColor: '#ff4c4c',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
+    minWidth: '96px',
+    padding: '11px 22px',
+    background: '#10243E',
+    color: '#FFFFFF',
+    border: '1px solid #10243E',
+    borderRadius: '9px',
     cursor: 'pointer',
-    fontFamily: 'Jost',
-    fontWeight: 'bold'
+    fontFamily: "'Jost', sans-serif",
+    fontWeight: '600',
+    fontSize: '13px'
   }
 };
 
