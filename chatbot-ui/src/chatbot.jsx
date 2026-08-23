@@ -1753,11 +1753,61 @@ const Chatbot = ({ onLogout }) => {
                           </div>
                           <button
                             type="button"
-                            onClick={() => setToast({
-                              open: true,
-                              type: 'default',
-                              message: 'Chat export will be available soon.'
-                            })}
+                            onClick={async () => {
+                              if (!userId) return;
+
+                              try {
+                                const exportQuery = query(
+                                  collection(db, 'chatHistory'),
+                                  where('userId', '==', userId),
+                                  orderBy('createdAt', 'desc')
+                                );
+
+                                const exportSnapshot = await getDocs(exportQuery);
+                                const exportChats = exportSnapshot.docs.map(item => {
+                                  const data = item.data();
+
+                                  return {
+                                    id: item.id,
+                                    title: data.title || 'New Chat',
+                                    createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+                                    messages: data.messages || []
+                                  };
+                                });
+
+                                const exportData = JSON.stringify({
+                                  exportedAt: new Date().toISOString(),
+                                  chats: exportChats
+                                }, null, 2);
+
+                                const blob = new Blob([exportData], {
+                                  type: 'application/json'
+                                });
+
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `ai-legal-counsellor-chats-${new Date().toISOString().slice(0, 10)}.json`;
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+                                URL.revokeObjectURL(url);
+
+                                setToast({
+                                  open: true,
+                                  type: 'success',
+                                  message: 'Your chats have been exported successfully.'
+                                });
+                              } catch (error) {
+                                console.error('Chat export failed:', error);
+
+                                setToast({
+                                  open: true,
+                                  type: 'error',
+                                  message: 'We could not export your chats. Please try again.'
+                                });
+                              }
+                            }}
                             style={styles.dataControlSecondaryButton}
                           >
                             Export
