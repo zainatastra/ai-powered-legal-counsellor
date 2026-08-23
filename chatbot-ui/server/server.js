@@ -1219,6 +1219,104 @@ app.post(
 );
 
 // -----------------------------------------------------------------------------
+// Delete all saved chats for the authenticated user
+// -----------------------------------------------------------------------------
+
+app.post(
+  '/api/auth/delete-chats',
+  async (req, res) => {
+    const idToken =
+      typeof req.body?.idToken === 'string'
+        ? req.body.idToken.trim()
+        : '';
+
+    if (!idToken) {
+      return res.status(401).json({
+        message:
+          'Authentication is required.'
+      });
+    }
+
+    try {
+      const decodedToken =
+        await adminAuth.verifyIdToken(
+          idToken
+        );
+
+      const uid =
+        decodedToken.uid;
+
+      const chatQuery =
+        adminDb
+          .collection('chatHistory')
+          .where('userId', '==', uid);
+
+      const snapshot =
+        await chatQuery.get();
+
+      if (snapshot.empty) {
+        return res.json({
+          ok: true,
+          deletedCount: 0
+        });
+      }
+
+      let deletedCount = 0;
+      let batch = adminDb.batch();
+      let batchCount = 0;
+
+      for (const chatDocument of snapshot.docs) {
+        batch.delete(chatDocument.ref);
+        batchCount += 1;
+        deletedCount += 1;
+
+        if (batchCount === 450) {
+          await batch.commit();
+          batch = adminDb.batch();
+          batchCount = 0;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      return res.json({
+        ok: true,
+        deletedCount
+      });
+    } catch (error) {
+      console.error(
+        'Delete all chats failed:',
+        {
+          code: error?.code,
+          message: error?.message
+        }
+      );
+
+      if (
+        error?.code ===
+          'auth/id-token-expired' ||
+        error?.code ===
+          'auth/invalid-id-token' ||
+        error?.code ===
+          'auth/argument-error'
+      ) {
+        return res.status(401).json({
+          message:
+            'Your authentication session has expired. Please log in again.'
+        });
+      }
+
+      return res.status(500).json({
+        message:
+          'Unable to delete your chats right now.'
+      });
+    }
+  }
+);
+
+// -----------------------------------------------------------------------------
 // Legal AI chat
 // -----------------------------------------------------------------------------
 

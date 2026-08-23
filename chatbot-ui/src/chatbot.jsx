@@ -237,6 +237,8 @@ const Chatbot = ({ onLogout }) => {
   const [settingsSection, setSettingsSection] = useState('account');
   const [deleteAccountConsentOpen, setDeleteAccountConsentOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteChatsConsentOpen, setDeleteChatsConsentOpen] = useState(false);
+  const [deleteChatsLoading, setDeleteChatsLoading] = useState(false);
   const [accountDeleted, setAccountDeleted] = useState(false);
   const [globalFeedback, setGlobalFeedback] = useState({ type: null, title: '', message: '' });
   const [toast, setToast] = useState({ open: false, message: '', type: 'default' });
@@ -556,6 +558,61 @@ const Chatbot = ({ onLogout }) => {
       setActiveAccountModal(null);
     } catch (error) {
       console.error('Profile update failed:', error);
+    }
+  };
+
+  const handleDeleteAllChats = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !userId) return;
+
+    setDeleteChatsLoading(true);
+
+    try {
+      const idToken = await currentUser.getIdToken(true);
+
+      const response = await fetch('/api/auth/delete-chats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ idToken })
+      });
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+          'We could not delete your chats. Please try again.'
+        );
+      }
+
+      setDeleteChatsConsentOpen(false);
+      setChatHistoryList([]);
+      setMessages([{ sender: 'bot', text: 'Hello! How can I help you today?' }]);
+      setActiveChatId(null);
+      setGlobalFeedback({
+        type: 'success',
+        title: 'Chats deleted',
+        message: 'All of your saved conversations have been permanently deleted.'
+      });
+    } catch (error) {
+      console.error('Delete all chats failed:', error);
+
+      setDeleteChatsConsentOpen(false);
+      setGlobalFeedback({
+        type: 'error',
+        title: 'Chats could not be deleted',
+        message: error?.message || 'We could not delete your chats. Please try again.'
+      });
+    } finally {
+      setDeleteChatsLoading(false);
     }
   };
 
@@ -1381,6 +1438,17 @@ const Chatbot = ({ onLogout }) => {
                     <Icon name="laptop" size={18} />
                     <span>Sessions</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsSection('dataControls')}
+                    style={{
+                      ...styles.settingsNavButton,
+                      ...(settingsSection === 'dataControls' ? styles.settingsNavButtonActive : {})
+                    }}
+                  >
+                    <Icon name="library" size={18} />
+                    <span>Data Controls</span>
+                  </button>
                 </div>
 
                 <div style={styles.settingsContent}>
@@ -1669,12 +1737,65 @@ const Chatbot = ({ onLogout }) => {
                       </div>
                     </div>
                   )}
+
+                  {settingsSection === 'dataControls' && (
+                    <div style={styles.dataControlsSection}>
+                      <h2 style={styles.settingsContentTitle}>Data Controls</h2>
+                      <div style={styles.dataControlsDescription}>
+                        Manage the conversations saved to your account.
+                      </div>
+
+                      <div style={styles.dataControlsList}>
+                        <div style={styles.dataControlRow}>
+                          <div style={styles.dataControlCopy}>
+                            <div style={styles.dataControlTitle}>Export chats</div>
+                            <div style={styles.dataControlDescription}>Download a copy of your saved conversations.</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setToast({
+                              open: true,
+                              type: 'default',
+                              message: 'Chat export will be available soon.'
+                            })}
+                            style={styles.dataControlSecondaryButton}
+                          >
+                            Export
+                          </button>
+                        </div>
+
+                        <div style={styles.dataControlRow}>
+                          <div style={styles.dataControlCopy}>
+                            <div style={styles.dataControlTitle}>Delete all chats</div>
+                            <div style={styles.dataControlDescription}>Permanently delete all saved conversations from your account.</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteChatsConsentOpen(true)}
+                            style={styles.dataControlDeleteButton}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
+
+      <ConsentModal
+        open={deleteChatsConsentOpen}
+        title="Delete all chats — are you sure?"
+        message="This will permanently delete all of your saved conversations. Your account, profile, sessions, and authentication will not be affected."
+        onCancel={() => setDeleteChatsConsentOpen(false)}
+        onConfirm={handleDeleteAllChats}
+        confirmText="Yes, Delete All Chats"
+        loading={deleteChatsLoading}
+      />
 
       <ConsentModal
         open={deleteAccountConsentOpen}
@@ -2533,6 +2654,85 @@ const styles = {
   modalSaveButtonDisabled: {
     opacity: 0.45,
     cursor: 'not-allowed'
+  },
+
+  dataControlsSection: {
+    width: '100%',
+    maxWidth: '760px',
+    marginTop: '36px',
+    paddingTop: '30px',
+    borderTop: '1px solid #E4E7EC'
+  },
+
+  dataControlsDescription: {
+    color: '#8A9098',
+    fontSize: '15px',
+    lineHeight: 1.5,
+    marginBottom: '22px'
+  },
+
+  dataControlsList: {
+    width: '100%',
+    borderTop: '1px solid #E4E7EC'
+  },
+
+  dataControlRow: {
+    minHeight: '86px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '24px',
+    borderBottom: '1px solid #E4E7EC',
+    padding: '12px 0'
+  },
+
+  dataControlCopy: {
+    minWidth: 0,
+    flex: 1
+  },
+
+  dataControlTitle: {
+    color: '#172033',
+    fontSize: '17px',
+    lineHeight: 1.25,
+    fontWeight: '600'
+  },
+
+  dataControlDescription: {
+    marginTop: '4px',
+    color: '#8A9098',
+    fontSize: '14px',
+    lineHeight: 1.45
+  },
+
+  dataControlSecondaryButton: {
+    minWidth: '104px',
+    height: '42px',
+    padding: '0 18px',
+    border: '1.5px solid #D7DAE0',
+    borderRadius: '999px',
+    background: '#FFFFFF',
+    color: '#111827',
+    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flexShrink: 0
+  },
+
+  dataControlDeleteButton: {
+    minWidth: '104px',
+    height: '42px',
+    padding: '0 18px',
+    border: '1.5px solid #D92D20',
+    borderRadius: '999px',
+    background: '#FFFFFF',
+    color: '#D92D20',
+    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flexShrink: 0
   },
 
   settingsLayout: {
@@ -3564,6 +3764,9 @@ if (typeof document !== 'undefined') {
         .sessionMeta { font-size: 14px !important; }
         .sessionAction { min-width: 0 !important; width: 100% !important; justify-content: flex-start !important; }
         .sessionLogoutButton { width: 100% !important; margin-top: 10px !important; }
+        .dataControlsSection { margin-top: 28px !important; padding-top: 24px !important; }
+        .dataControlRow { align-items: flex-start !important; flex-direction: column !important; gap: 12px !important; padding: 16px 0 !important; }
+        .dataControlSecondaryButton, .dataControlDeleteButton { width: 100% !important; }
 
       }
     `;
