@@ -1,25 +1,120 @@
+/* Global styles for the AI-Powered Legal Counsellor */
+
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;500;600;700&display=swap');
+
+:root {
+  --legal-navy: #10243E;
+  --legal-navy-soft: #172A46;
+  --legal-gold: #B8924A;
+  --legal-ivory: #FCFBF8;
+  --legal-text: #172033;
+  --legal-muted: #727C8B;
+  --legal-border: #E4DED4;
+  --legal-surface: #FFFFFF;
+}
+
+html {
+  min-height: 100%;
+  background: var(--legal-ivory);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  min-height: 100vh;
+  background: var(--legal-ivory);
+  color: var(--legal-text);
+  font-family: 'Titillium Web', Geneva, Tahoma, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }
 
-@keyframes glow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: #9AA1AB;
+  opacity: 1;
+}
+
+code,
+pre {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Shared page transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Loading animation */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
+/* Subtle shimmer available to shared skeleton elements */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Shared focus treatment */
+:focus-visible {
+  outline: 2px solid rgba(184, 146, 74, 0.7);
+  outline-offset: 2px;
+}
+
+/* Keep scrolling clean and unobtrusive */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #C9C4BB transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #C9C4BB;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #AFA89D;
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+}

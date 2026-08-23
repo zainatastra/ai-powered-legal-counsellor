@@ -1,11 +1,13 @@
-// src/GlassModal.js
 import React from 'react';
+import { ShieldAlert, X, LogIn } from 'lucide-react';
 
 const GlassModal = ({ message, onConfirm, onCancel }) => {
   return (
     <div style={styles.overlay}>
       <div className="legal-modal-box" style={styles.modal}>
-        <div style={styles.icon}>⚖</div>
+        <div style={styles.icon}>
+          <ShieldAlert size={24} strokeWidth={1.8} />
+        </div>
 
         <div style={styles.eyebrow}>ACCESS REQUIRED</div>
 
@@ -19,7 +21,8 @@ const GlassModal = ({ message, onConfirm, onCancel }) => {
             className="glass-modal-cancel"
             onClick={onCancel}
           >
-            Cancel
+            <X size={17} strokeWidth={1.9} />
+            <span>Cancel</span>
           </button>
 
           <button
@@ -27,7 +30,8 @@ const GlassModal = ({ message, onConfirm, onCancel }) => {
             className="glass-modal-confirm"
             onClick={onConfirm}
           >
-            Login
+            <LogIn size={17} strokeWidth={1.9} />
+            <span>Login</span>
           </button>
         </div>
       </div>
@@ -115,12 +119,12 @@ const styles = {
 
   modal: {
     width: '90%',
-    maxWidth: '420px',
+    maxWidth: '430px',
     boxSizing: 'border-box',
-    padding: '34px',
+    padding: '36px',
     borderRadius: '20px',
-    background: 'rgba(255,255,255,0.97)',
-    border: '1px solid rgba(13,31,55,0.08)',
+    background: 'rgba(255,255,255,0.98)',
+    border: '1px solid #E4DED4',
     boxShadow: '0 24px 70px rgba(7,20,37,0.22)',
     textAlign: 'center',
     color: '#172A46',
@@ -129,55 +133,59 @@ const styles = {
   },
 
   icon: {
-    width: '48px',
-    height: '48px',
-    margin: '0 auto 15px',
-    borderRadius: '13px',
+    width: '52px',
+    height: '52px',
+    margin: '0 auto 17px',
+    borderRadius: '14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#EEF2F7',
-    border: '1px solid #E0E6EE',
-    color: '#B8924A',
-    fontSize: '22px'
+    background: '#F4F1E9',
+    border: '1px solid #E7DDC8',
+    color: '#B8924A'
   },
 
   eyebrow: {
-    marginBottom: '7px',
-    color: '#8B97A8',
+    marginBottom: '8px',
+    color: '#B8924A',
     fontFamily: "'Jost', sans-serif",
-    fontSize: '10px',
+    fontSize: '12px',
     fontWeight: '700',
-    letterSpacing: '1.5px'
+    letterSpacing: '1.7px'
   },
 
   heading: {
-    margin: '0 0 10px',
+    margin: '0 0 11px',
     color: '#10243E',
     fontFamily: "'Jost', sans-serif",
-    fontSize: '24px',
+    fontSize: '27px',
     lineHeight: 1.2,
     fontWeight: '700',
-    letterSpacing: '-0.4px'
+    letterSpacing: '-0.5px'
   },
 
   text: {
-    maxWidth: '330px',
-    margin: '0 auto 24px',
+    maxWidth: '340px',
+    margin: '0 auto 26px',
     color: '#667386',
-    fontSize: '14px',
+    fontSize: '15px',
     lineHeight: 1.6
   },
 
   buttonGroup: {
     display: 'flex',
     justifyContent: 'center',
-    gap: '10px'
+    gap: '11px'
   },
 
   cancelBtn: {
-    minWidth: '96px',
-    padding: '11px 20px',
+    minWidth: '105px',
+    height: '44px',
+    padding: '0 18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '7px',
     background: '#F7F8FA',
     color: '#405066',
     border: '1px solid #DCE2E9',
@@ -185,12 +193,17 @@ const styles = {
     cursor: 'pointer',
     fontFamily: "'Jost', sans-serif",
     fontWeight: '600',
-    fontSize: '13px'
+    fontSize: '14px'
   },
 
   confirmBtn: {
-    minWidth: '96px',
-    padding: '11px 22px',
+    minWidth: '105px',
+    height: '44px',
+    padding: '0 18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '7px',
     background: '#10243E',
     color: '#FFFFFF',
     border: '1px solid #10243E',
@@ -198,7 +211,7 @@ const styles = {
     cursor: 'pointer',
     fontFamily: "'Jost', sans-serif",
     fontWeight: '600',
-    fontSize: '13px'
+    fontSize: '14px'
   }
 };
 

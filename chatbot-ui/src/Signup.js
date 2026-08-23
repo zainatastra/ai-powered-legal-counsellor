@@ -1,9 +1,22 @@
 import React, { useState } from 'react';
+import {
+  Eye,
+  EyeOff,
+  Scale,
+  CheckCircle2,
+  CircleAlert
+} from 'lucide-react';
 import { auth, db } from './firebase';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import {
+  createUserWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
+import {
+  doc,
+  setDoc
+} from 'firebase/firestore';
 
-const Signup = ({ onSignupComplete }) => {
+const Signup = ({ onSignupComplete, onSwitchToLogin }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -13,79 +26,300 @@ const Signup = ({ onSignupComplete }) => {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       const user = userCredential.user;
 
-      // Save additional info to Firestore
-      await setDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, 'users', user.uid), {
         firstName,
         lastName,
         email,
         createdAt: new Date()
       });
 
-      await signOut(auth); // Prevent auto-login
-      setMessage('✅ Account created successfully! Please log in.');
+      await signOut(auth);
+
+      setMessage('Account created successfully! Please log in.');
+
       if (onSignupComplete) {
         setTimeout(() => {
-          onSignupComplete(); // Redirect to login
+          onSignupComplete();
         }, 1500);
       }
     } catch (error) {
-      setMessage(`❌ Error: ${error.message}`);
+      setMessage(`Error: ${error.message}`);
     }
   };
 
+  const isSuccess = message.startsWith('Account created successfully!');
+
   return (
     <div style={styles.container}>
-      <div style={styles.overlay}></div>
-      <form onSubmit={handleSignup} style={styles.form}>
-        <h2 style={styles.heading}>Sign Up</h2>
+      <div style={styles.backgroundGlow}></div>
 
-        <input
-          type="text"
-          placeholder="First Name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          style={styles.input}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Last Name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          style={styles.input}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={styles.input}
-          required
-        />
-        <div style={styles.passwordContainer}>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ ...styles.input, paddingRight: '40px' }}
-            required
-          />
-          <span
-            onClick={() => setShowPassword(!showPassword)}
-            style={styles.eyeIcon}
-          >
-            {showPassword ? '🙈' : '👁️'}
-          </span>
+      <div style={styles.shell}>
+        <div style={styles.brand}>
+          <div style={styles.brandMark}>
+            <Scale size={24} strokeWidth={1.8} />
+          </div>
+
+          <div>
+            <div style={styles.brandName}>AI-Powered Legal Counsellor</div>
+            <div style={styles.brandSub}>LEGAL ASSISTANCE PLATFORM</div>
+          </div>
         </div>
-        <button type="submit" style={styles.button}>Sign Up</button>
-        {message && <p style={styles.message}>{message}</p>}
-      </form>
+
+        <div style={styles.authToggle} role="tablist" aria-label="Authentication">
+          <div className="auth-toggle-indicator register-indicator" aria-hidden="true" />
+          <button
+            type="button"
+            role="tab"
+            aria-selected={false}
+            onClick={onSwitchToLogin}
+            style={styles.toggleButton}
+            className="auth-toggle-button"
+          >
+            Login
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected
+            style={{ ...styles.toggleButton, ...styles.activeToggle }}
+            className="auth-toggle-button active"
+          >
+            Register
+          </button>
+        </div>
+
+        <form
+          onSubmit={handleSignup}
+          className="signup-form"
+          style={styles.form}
+        >
+          <div style={styles.eyebrow}>CREATE ACCOUNT</div>
+
+          <h2 style={styles.heading}>Create your account</h2>
+
+          <p style={styles.intro}>
+            Register to access your AI-powered legal assistance dashboard.
+          </p>
+
+          <div className="signup-name-row" style={styles.nameRow}>
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>First name</label>
+              <input
+                type="text"
+                placeholder="First name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                style={styles.input}
+                className="signup-input"
+                required
+              />
+            </div>
+
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>Last name</label>
+              <input
+                type="text"
+                placeholder="Last name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                style={styles.input}
+                className="signup-input"
+                required
+              />
+            </div>
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Email address</label>
+
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={styles.input}
+              className="signup-input"
+              required
+            />
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label style={styles.label}>Password</label>
+
+            <div style={styles.passwordContainer}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={styles.passwordInput}
+                className="signup-input"
+                required
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+                className="signup-eye-button"
+                aria-label={
+                  showPassword ? 'Hide password' : 'Show password'
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={19} strokeWidth={1.8} />
+                ) : (
+                  <Eye size={19} strokeWidth={1.8} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            style={styles.button}
+            className="signup-button"
+          >
+            Create account
+          </button>
+
+          {message && (
+            <div
+              style={{
+                ...styles.message,
+                ...(isSuccess
+                  ? styles.successMessage
+                  : styles.errorMessage)
+              }}
+            >
+              {isSuccess ? (
+                <CheckCircle2 size={18} strokeWidth={1.9} />
+              ) : (
+                <CircleAlert size={18} strokeWidth={1.9} />
+              )}
+
+              <span>{message}</span>
+            </div>
+          )}
+        </form>
+
+        <p style={styles.footer}>
+          Your information is securely handled through the platform's
+          authentication system.
+        </p>
+      </div>
+
+      <style>{`
+
+        .auth-toggle-indicator {
+          position: absolute;
+          top: 5px;
+          bottom: 5px;
+          left: 5px;
+          width: calc(50% - 7px);
+          border-radius: 999px;
+          background: #FFFFFF;
+          box-shadow: 0 3px 12px rgba(16, 36, 62, 0.12);
+          pointer-events: none;
+          z-index: 0;
+          will-change: transform;
+          transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .auth-toggle-indicator.register-indicator {
+          transform: translateX(100%);
+        }
+
+        .auth-toggle-indicator.login-indicator {
+          transform: translateX(0);
+        }
+
+
+        .auth-toggle-button {
+          transition:
+            background 180ms ease,
+            color 180ms ease,
+            box-shadow 180ms ease,
+            transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .auth-toggle-button:hover {
+          color: #10243E !important;
+        }
+
+        .auth-toggle-button.active {
+          box-shadow: 0 3px 12px rgba(16, 36, 62, 0.12);
+        }
+
+        .signup-input {
+          transition:
+            border-color 180ms ease,
+            box-shadow 180ms ease,
+            background 180ms ease;
+        }
+
+        .signup-input::placeholder {
+          color: #9AA1AB;
+          opacity: 1;
+        }
+
+        .signup-input:focus {
+          border-color: #B8924A !important;
+          box-shadow: 0 0 0 3px rgba(184, 146, 74, 0.12);
+          background: #FFFFFF !important;
+        }
+
+        .signup-button {
+          transition:
+            background 180ms ease,
+            transform 180ms ease,
+            box-shadow 180ms ease;
+        }
+
+        .signup-button:hover {
+          background: #172A46 !important;
+          transform: translateY(-1px);
+          box-shadow: 0 10px 24px rgba(13, 31, 55, 0.18);
+        }
+
+        .signup-button:active {
+          transform: translateY(0);
+        }
+
+        .signup-eye-button {
+          transition: color 160ms ease, background 160ms ease;
+        }
+
+        .signup-eye-button:hover {
+          color: #10243E !important;
+          background: rgba(16, 36, 62, 0.05) !important;
+        }
+
+        @media (max-width: 600px) {
+          .signup-form {
+            padding: 30px 22px !important;
+          }
+
+          .signup-name-row {
+            grid-template-columns: 1fr !important;
+          }
+
+          .signup-container {
+            padding: 28px 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
@@ -93,79 +327,279 @@ const Signup = ({ onSignupComplete }) => {
 const styles = {
   container: {
     position: 'relative',
-    fontFamily: 'Saira',
+    minHeight: '100vh',
+    width: '100%',
+    boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
-    backgroundImage: `url(${process.env.PUBLIC_URL}/background.png)`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    overflow: 'hidden'
+    background: '#FCFBF8',
+    fontFamily: "'Saira', 'Segoe UI', sans-serif",
+    color: '#172033',
+    overflow: 'auto',
+    padding: '34px 20px'
   },
-  overlay: {
+
+  backgroundGlow: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    zIndex: 0
+    inset: 0,
+    pointerEvents: 'none',
+    background:
+      'radial-gradient(circle at 50% 10%, rgba(184,146,74,0.10), transparent 34%), linear-gradient(180deg, #FCFBF8 0%, #F7F5F0 100%)'
   },
-  form: {
+
+  shell: {
+    position: 'relative',
     zIndex: 1,
-    backgroundColor: '#0f0f0f',
-    padding: '30px',
-    borderRadius: '12px',
-    boxShadow: '0 0 25px #00f2ff',
-    display: 'flex',
-    flexDirection: 'column',
-    width: '300px'
-  },
-  heading: {
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: '20px'
-  },
-  input: {
     width: '100%',
-    padding: '12px',
-    marginBottom: '15px',
-    fontFamily: 'Saira',
-    borderRadius: '8px',
-    border: '1px solid #00f2ff',
-    backgroundColor: '#000',
-    color: '#fff',
-    fontSize: '16px',
-    outline: 'none',
+    maxWidth: '560px',
     boxSizing: 'border-box'
   },
-  passwordContainer: {
-    position: 'relative'
+
+  brand: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '13px',
+    marginBottom: '22px'
   },
-  eyeIcon: {
+
+  brandMark: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#10243E',
+    color: '#D0AE6B',
+    boxShadow: '0 8px 20px rgba(16,36,62,0.14)'
+  },
+
+  brandName: {
+    color: '#10243E',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '18px',
+    fontWeight: '700',
+    letterSpacing: '-0.25px'
+  },
+
+  brandSub: {
+    marginTop: '4px',
+    color: '#8B929D',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '11px',
+    fontWeight: '700',
+    letterSpacing: '1.4px'
+  },
+
+  authToggle: {
+    position: 'relative',
+    width: '100%',
+    height: '58px',
+    boxSizing: 'border-box',
+    padding: '5px',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4px',
+    background: '#F0F1F3',
+    border: '1px solid #E0E3E8',
+    borderRadius: '999px',
+    marginBottom: '16px'
+  },
+
+  authToggleIndicator: {
     position: 'absolute',
-    right: '12px',
+    top: '5px',
+    bottom: '5px',
+    left: '5px',
+    width: 'calc(50% - 7px)',
+    borderRadius: '999px',
+    background: '#FFFFFF',
+    boxShadow: '0 3px 12px rgba(16, 36, 62, 0.12)',
+    pointerEvents: 'none',
+    zIndex: 0
+  },
+
+  toggleButton: {
+    position: 'relative',
+    zIndex: 1,
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    borderRadius: '999px',
+    background: 'transparent',
+    color: '#687589',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    outline: 'none'
+  },
+
+  activeToggle: {
+    background: 'transparent',
+    color: '#10243E',
+    position: 'relative',
+    zIndex: 1
+  },
+
+  form: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '38px',
+    background: 'rgba(255,255,255,0.98)',
+    border: '1px solid #E4DED4',
+    borderRadius: '30px',
+    boxShadow: '0 20px 55px rgba(11, 23, 42, 0.08)',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+
+  eyebrow: {
+    color: '#B8924A',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '12px',
+    fontWeight: '700',
+    letterSpacing: '1.8px',
+    marginBottom: '9px'
+  },
+
+  heading: {
+    margin: 0,
+    color: '#10243E',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '32px',
+    lineHeight: 1.15,
+    fontWeight: '700',
+    letterSpacing: '-0.8px'
+  },
+
+  intro: {
+    margin: '10px 0 28px',
+    color: '#727C8B',
+    fontSize: '15px',
+    lineHeight: 1.55
+  },
+
+  nameRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '14px'
+  },
+
+  fieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    marginBottom: '18px'
+  },
+
+  label: {
+    marginBottom: '8px',
+    color: '#304158',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '14px',
+    fontWeight: '600'
+  },
+
+  input: {
+    width: '100%',
+    boxSizing: 'border-box',
+    height: '50px',
+    padding: '0 17px',
+    borderRadius: '999px',
+    border: '1px solid #D7DDE5',
+    background: '#FAFAF9',
+    color: '#172033',
+    fontFamily: "'Saira', 'Segoe UI', sans-serif",
+    fontSize: '15px',
+    outline: 'none'
+  },
+
+  passwordContainer: {
+    position: 'relative',
+    width: '100%'
+  },
+
+  passwordInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    height: '50px',
+    padding: '0 54px 0 17px',
+    borderRadius: '999px',
+    border: '1px solid #D7DDE5',
+    background: '#FAFAF9',
+    color: '#172033',
+    fontFamily: "'Saira', 'Segoe UI', sans-serif",
+    fontSize: '15px',
+    outline: 'none'
+  },
+
+  eyeButton: {
+    position: 'absolute',
+    right: '7px',
     top: '50%',
     transform: 'translateY(-50%)',
-    cursor: 'pointer',
-    color: '#00f2ff',
-    fontSize: '18px'
-  },
-  button: {
-    padding: '12px',
-    backgroundColor: '#00f2ff',
-    color: '#000',
-    fontWeight: 'bold',
-    fontFamily: 'Jost',
+    width: '38px',
+    height: '38px',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '999px',
+    background: 'transparent',
+    color: '#6C7889',
     cursor: 'pointer'
   },
+
+  button: {
+    width: '100%',
+    height: '52px',
+    marginTop: '4px',
+    padding: '0 20px',
+    background: '#10243E',
+    color: '#FFFFFF',
+    fontFamily: "'Jost', sans-serif",
+    fontSize: '15px',
+    fontWeight: '600',
+    border: '1px solid #10243E',
+    borderRadius: '999px',
+    cursor: 'pointer',
+    outline: 'none'
+  },
+
   message: {
-    marginTop: '10px',
-    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    margin: '16px 0 0',
+    padding: '12px 15px',
+    borderRadius: '999px',
+    fontSize: '14px',
+    lineHeight: 1.45,
+    textAlign: 'center'
+  },
+
+  successMessage: {
+    color: '#2E6B4A',
+    background: '#F1F8F3',
+    border: '1px solid #D6EBDD'
+  },
+
+  errorMessage: {
+    color: '#9A4141',
+    background: '#FCF2F2',
+    border: '1px solid #F0D9D9'
+  },
+
+  footer: {
+    margin: '17px auto 0',
+    maxWidth: '460px',
+    color: '#8D9298',
+    fontSize: '12px',
+    lineHeight: 1.5,
     textAlign: 'center'
   }
 };
