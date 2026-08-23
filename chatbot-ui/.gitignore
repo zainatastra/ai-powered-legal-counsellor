@@ -26,3 +26,5 @@ yarn-error.log*
 *.zip
 *.png
 *.mp4
+# Firebase Admin private credential
+server/firebase-service-account.json

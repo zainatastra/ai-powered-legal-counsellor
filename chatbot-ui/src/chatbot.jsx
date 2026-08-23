@@ -183,19 +183,10 @@ const parseDeviceInfo = () => {
   };
 };
 
-const getSessionLocation = async () => {
-  try {
-    const response = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-    if (!response.ok) return { city: 'Unknown location', region: '' };
-    const data = await response.json();
-    return {
-      city: data.city || 'Unknown location',
-      region: data.region_code || data.region || ''
-    };
-  } catch {
-    return { city: 'Unknown location', region: '' };
-  }
-};
+const getSessionLocation = async () => ({
+  city: 'Unknown location',
+  region: ''
+});
 
 const formatSessionDate = (timestamp) => {
   if (!timestamp) return 'Just now';
@@ -276,6 +267,20 @@ const Chatbot = ({ onLogout }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        try {
+          await user.reload();
+          await user.getIdToken(true);
+        } catch (error) {
+          console.error('Authentication refresh failed:', error);
+          setUserId(null);
+          return;
+        }
+
+        if (!auth.currentUser?.emailVerified) {
+          setUserId(null);
+          return;
+        }
+
         setUserId(user.uid);
         setUserEmail(user.email || '');
         const userProfile = await getDoc(doc(db, 'users', user.uid));
@@ -355,7 +360,6 @@ const Chatbot = ({ onLogout }) => {
       if (cancelled) return;
 
       const sessionRef = doc(db, 'sessions', sessionId);
-      const existing = await getDoc(sessionRef);
 
       const sessionData = {
         userId,
@@ -371,17 +375,10 @@ const Chatbot = ({ onLogout }) => {
         lastActiveAt: serverTimestamp()
       };
 
-      if (!existing.exists() || existing.data()?.userId !== userId) {
-        await setDoc(sessionRef, {
-          ...sessionData,
-          createdAt: serverTimestamp()
-        }, { merge: true });
-      } else {
-        await updateDoc(sessionRef, {
-          ...sessionData,
-          revoked: false
-        });
-      }
+      await setDoc(sessionRef, {
+        ...sessionData,
+        createdAt: serverTimestamp()
+      }, { merge: true });
 
       unsubscribeSession = onSnapshot(sessionRef, async snapshot => {
         if (!snapshot.exists()) return;
