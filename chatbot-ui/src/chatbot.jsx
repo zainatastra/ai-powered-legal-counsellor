@@ -603,13 +603,13 @@ const Chatbot = ({ onLogout }) => {
         message: 'All of your saved conversations have been permanently deleted.'
       });
     } catch (error) {
-      console.error('Delete all chats failed:', error);
+      console.error('Delete all Chat Failed:', error);
 
       setDeleteChatsConsentOpen(false);
       setGlobalFeedback({
         type: 'error',
         title: 'Chats could not be deleted',
-        message: error?.message || 'We could not delete your chats. Please try again.'
+        message: error?.message || 'We could not delete your chats. Please try again later.'
       });
     } finally {
       setDeleteChatsLoading(false);
