@@ -640,13 +640,13 @@ const Chatbot = ({ onLogout }) => {
       setDeleteAccountConsentOpen(false);
       setActiveAccountModal(null);
       setChatHistoryList([]);
-      setMessages([{ sender: 'bot', text: 'Hello! How can I help you today?' }]);
+      setMessages([{ sender: 'bot', text: 'Hello! How may I help you today?' }]);
       setActiveChatId(null);
       setAccountDeleted(true);
       setGlobalFeedback({
         type: 'success',
         title: 'Account deleted',
-        message: 'Your account, chats, and stored profile data have been permanently deleted.'
+        message: 'Your account, chats and stored profile data have been permanently deleted.'
       });
     } catch (error) {
       console.error('Account deletion failed:', error);
