@@ -15,6 +15,8 @@ import {
   signOut
 } from 'firebase/auth';
 
+import { Toast } from './GlobalFeedback';
+
 const Signup = ({
   onSignupComplete,
   onSwitchToLogin
@@ -36,6 +38,13 @@ const Signup = ({
 
   const [message, setMessage] =
     useState('');
+
+  const [toast, setToast] =
+    useState({
+      open: false,
+      message: '',
+      type: 'default'
+    });
 
   const [submitting, setSubmitting] =
     useState(false);
@@ -260,9 +269,17 @@ const Signup = ({
 
       switch (error?.code) {
         case 'auth/email-already-in-use':
-          errorMessage =
-            'An account with this email already exists. Please log in instead.';
-          break;
+          // Show this as a toast rather than the inline banner - it's
+          // easy to miss above the fold, and this is the one signup
+          // error people most need to actually notice.
+          setToast({
+            open: true,
+            type: 'error',
+            message:
+              'This email is already registered. Please log in instead.'
+          });
+
+          return;
 
         case 'auth/invalid-email':
           errorMessage =
@@ -319,6 +336,18 @@ const Signup = ({
 
   return (
     <div style={styles.container}>
+      <Toast
+        open={toast.open}
+        message={toast.message}
+        type={toast.type}
+        onClose={() =>
+          setToast((current) => ({
+            ...current,
+            open: false
+          }))
+        }
+      />
+
       <div
         style={styles.backgroundGlow}
       />

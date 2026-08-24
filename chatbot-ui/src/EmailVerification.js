@@ -12,10 +12,6 @@ const OTP_LENGTH = 5;
 
 const RESEND_COOLDOWN = 30;
 
-const MAX_OTP_ATTEMPTS = 5;
-
-const OTP_LOCK_DURATION = 60;
-
 /*
  * SECURITY: only ever talk to the verification backend over HTTPS (or
  * localhost during development). Prevents the ID token / OTP from ever
@@ -54,9 +50,6 @@ const EmailVerification = ({
     useState(false);
 
   const [resendTimer, setResendTimer] =
-    useState(0);
-
-  const [failedOtpAttempts, setFailedOtpAttempts] =
     useState(0);
 
   const [otpLockSeconds, setOtpLockSeconds] =
@@ -246,19 +239,24 @@ const EmailVerification = ({
       }
 
       if (!response.ok) {
-        throw new Error(
+        const sendError = new Error(
           data?.message ||
           'The verification code could not be sent.'
         );
+
+        sendError.retryAfterSeconds =
+          Number.isFinite(
+            Number(data?.sendBlockedForSeconds)
+          )
+            ? Number(data.sendBlockedForSeconds)
+            : null;
+
+        throw sendError;
       }
 
       setOtp(
         Array(OTP_LENGTH).fill('')
       );
-
-      // A fresh code makes previous wrong guesses moot.
-      setFailedOtpAttempts(0);
-      setOtpLockSeconds(0);
 
       setResendTimer(
         Number.isFinite(
@@ -295,6 +293,18 @@ const EmailVerification = ({
           : err?.message ||
             'The verification code could not be sent. Please try again.'
       );
+
+      // Reflect the server's actual block/cooldown countdown (it is the
+      // authoritative source - e.g. the 30-minute block after 3 sends).
+      if (
+        Number.isFinite(
+          err?.retryAfterSeconds
+        )
+      ) {
+        setResendTimer(
+          err.retryAfterSeconds
+        );
+      }
     } finally {
       setLoading(false);
       setResending(false);
@@ -552,10 +562,19 @@ const EmailVerification = ({
       }
 
       if (!response.ok) {
-        throw new Error(
+        const verifyError = new Error(
           data?.message ||
           'The verification code is incorrect.'
         );
+
+        verifyError.retryAfterSeconds =
+          Number.isFinite(
+            Number(data?.verifyBlockedForSeconds)
+          )
+            ? Number(data.verifyBlockedForSeconds)
+            : null;
+
+        throw verifyError;
       }
 
       // Refresh Firebase's local user state
@@ -594,11 +613,6 @@ const EmailVerification = ({
         err
       );
 
-      const isSessionError =
-        /session has expired/i.test(
-          err?.message || ''
-        );
-
       setError(
         err?.code
           ? 'The verification code could not be verified. Please try again.'
@@ -614,19 +628,17 @@ const EmailVerification = ({
         inputRefs.current[0]?.focus();
       }, 50);
 
-      // Only count genuine wrong-code responses toward the lockout, not
-      // session/network problems.
-      if (!isSessionError) {
-        setFailedOtpAttempts((prev) => {
-          const next = prev + 1;
-
-          if (next >= MAX_OTP_ATTEMPTS) {
-            setOtpLockSeconds(OTP_LOCK_DURATION);
-            return 0;
-          }
-
-          return next;
-        });
+      // The server is authoritative on the 3-wrong-guesses / 1-hour lock
+      // (it survives reloads and even account deletion+recreation, which
+      // a client-only counter cannot). Just reflect what it returned.
+      if (
+        Number.isFinite(
+          err?.retryAfterSeconds
+        )
+      ) {
+        setOtpLockSeconds(
+          err.retryAfterSeconds
+        );
       }
     } finally {
       setVerifying(false);

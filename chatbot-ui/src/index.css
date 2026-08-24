@@ -1,16 +1,114 @@
-/* Global styles for the AI-Powered Legal Counsellor */
+/* ==========================================================================
+   Global design system for the AI-Powered Legal Counsellor
+   This file is the single source of truth for design tokens, shared
+   keyframes, and shared utility classes. Every other stylesheet/component
+   should reference these variables/classes rather than redefining them.
+   ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;500;600;700&display=swap');
 
 :root {
+  /* ---- Brand palette (existing) ---- */
   --legal-navy: #10243E;
   --legal-navy-soft: #172A46;
   --legal-gold: #B8924A;
+  --legal-gold-soft: #D4B876;
   --legal-ivory: #FCFBF8;
   --legal-text: #172033;
   --legal-muted: #727C8B;
   --legal-border: #E4DED4;
   --legal-surface: #FFFFFF;
+
+  /* ---- Semantic/status colors (used by GlobalFeedback, inline validation, etc.) ---- */
+  --legal-success: #2F7D5A;
+  --legal-success-bg: #EAF5EF;
+  --legal-success-border: #BFE0CD;
+  --legal-error: #B3432E;
+  --legal-error-bg: #FCEEEB;
+  --legal-error-border: #F0C6BB;
+  --legal-warning: #A8761F;
+  --legal-warning-bg: #FBF3E3;
+  --legal-warning-border: #EAD6A8;
+  --legal-info: #2C5C8A;
+  --legal-info-bg: #EBF2F9;
+  --legal-info-border: #C4D9EC;
+
+  /* ---- Overlay ---- */
+  --legal-overlay: rgba(16, 36, 62, 0.48);
+
+  /* ---- Typography scale ---- */
+  --font-family-base: 'Titillium Web', Geneva, Tahoma, sans-serif;
+  --font-family-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-base: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --fs-3xl: 30px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.7;
+
+  /* ---- Spacing scale (4px base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* ---- Radii ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* ---- Shadows (soft, professional — no heavy drama) ---- */
+  --shadow-xs: 0 1px 2px rgba(16, 36, 62, 0.06);
+  --shadow-sm: 0 2px 6px rgba(16, 36, 62, 0.08);
+  --shadow-md: 0 8px 24px rgba(16, 36, 62, 0.10);
+  --shadow-lg: 0 16px 40px rgba(16, 36, 62, 0.14);
+  --shadow-focus: 0 0 0 3px rgba(184, 146, 74, 0.22);
+
+  /* ---- Borders ---- */
+  --border-width: 1px;
+  --border-color: var(--legal-border);
+
+  /* ---- Motion (smooth + fast, per design direction) ---- */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* ---- Control sizing (buttons/inputs stay consistent app-wide) ---- */
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 48px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+
+  /* ---- Z-index scale ---- */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 900;
+  --z-modal: 1000;
+  --z-toast: 1100;
 }
 
 html {
@@ -23,7 +121,9 @@ body {
   min-height: 100vh;
   background: var(--legal-ivory);
   color: var(--legal-text);
-  font-family: 'Titillium Web', Geneva, Tahoma, sans-serif;
+  font-family: var(--font-family-base);
+  font-size: var(--fs-base);
+  line-height: var(--lh-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -47,39 +147,125 @@ textarea::placeholder {
 
 code,
 pre {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--font-family-mono);
 }
 
-/* Shared page transitions */
+/* ==========================================================================
+   Shared keyframes — reused by GlobalFeedback (toasts/modals), GlassModal,
+   Loading (skeletons), and any future component. Do not redeclare these
+   locally in component files; reference by name.
+   ========================================================================== */
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Loading animation */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Overlay behind modals */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal / dialog surface entrance */
+@keyframes scaleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes scaleOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+/* Toast entrance/exit */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Generic section/content entrance (dropdowns, panels, tab content) */
+@keyframes slideDownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUpIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading spinner */
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-  100% {
-    transform: rotate(360deg);
+/* Skeleton shimmer */
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   Shared utility classes
+   ========================================================================== */
+
+/* Skeleton block — component files size/shape this with width/height/border-radius
+   inline or via a wrapper class; the shimmer treatment stays consistent here. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #EDEAE3;
+  background-image: linear-gradient(
+    90deg,
+    #EDEAE3 25%,
+    #F5F3EE 37%,
+    #EDEAE3 63%
+  );
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }
 
-/* Subtle shimmer available to shared skeleton elements */
-@keyframes skeletonShimmer {
-  0% {
-    background-position: 200% 0;
-  }
+/* Screen-reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
-  100% {
-    background-position: -200% 0;
+/* Respect reduced-motion globally for any animation/transition */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -106,7 +292,7 @@ pre {
 
 *::-webkit-scrollbar-thumb {
   background: #C9C4BB;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -115,6 +301,6 @@ pre {
 
 @media (max-width: 600px) {
   body {
-    font-size: 15px;
+    font-size: var(--fs-md);
   }
 }

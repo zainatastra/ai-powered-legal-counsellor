@@ -63,6 +63,28 @@ const OTP_RESEND_COOLDOWN_MS = 30 * 1000;
 
 const OTP_MAX_ATTEMPTS = 5;
 
+/*
+ * -----------------------------------------------------------------------
+ * OTP request / verify limits (per email, independent of each other)
+ * -----------------------------------------------------------------------
+ * - Sending: max 3 codes per email, then a 30-minute block.
+ * - Verifying: max 3 wrong guesses per email (across any code), then a
+ *   1-hour block.
+ * Tracked in their own collection, keyed by normalized email (not uid),
+ * so the limit survives the account being deleted and re-created with
+ * the same email.
+ */
+
+const OTP_RATE_LIMIT_COLLECTION = 'otpRateLimits';
+
+const MAX_OTP_SEND_ATTEMPTS = 3;
+
+const OTP_SEND_BLOCK_MS = 30 * 60 * 1000;
+
+const MAX_OTP_WRONG_ATTEMPTS = 3;
+
+const OTP_VERIFY_BLOCK_MS = 60 * 60 * 1000;
+
 // -----------------------------------------------------------------------------
 // CORS
 // -----------------------------------------------------------------------------
@@ -183,6 +205,32 @@ function getRemainingSeconds(date) {
     0,
     Math.ceil(remaining / 1000)
   );
+}
+
+function formatDuration(totalSeconds) {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  }
+
+  return `${secs}s`;
+}
+
+function getOtpRateLimitRef(email) {
+  const normalizedEmail =
+    (email || '').trim().toLowerCase();
+
+  return adminDb
+    .collection(OTP_RATE_LIMIT_COLLECTION)
+    .doc(normalizedEmail);
 }
 
 function escapeHtml(value = '') {
@@ -388,6 +436,44 @@ app.post(
           alreadyVerified: true,
           message:
             'Your email address is already verified.'
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // OTP SEND LIMIT: max 3 codes per email, then a 30-minute block.
+      // Keyed by email (not uid) so it survives account deletion/recreation.
+      // -----------------------------------------------------------------------
+
+      const rateLimitRef =
+        getOtpRateLimitRef(
+          userRecord.email
+        );
+
+      const rateLimitSnapshot =
+        await rateLimitRef.get();
+
+      const rateLimitData =
+        rateLimitSnapshot.exists
+          ? rateLimitSnapshot.data()
+          : null;
+
+      const sendBlockedUntil =
+        rateLimitData?.sendBlockedUntil?.toDate?.();
+
+      if (
+        sendBlockedUntil &&
+        sendBlockedUntil.getTime() > Date.now()
+      ) {
+        const retryAfterSeconds =
+          getRemainingSeconds(
+            sendBlockedUntil
+          );
+
+        return res.status(429).json({
+          message:
+            `You've requested the maximum of ${MAX_OTP_SEND_ATTEMPTS} verification codes for this email. Please try again in ${formatDuration(retryAfterSeconds)}.`,
+          sendBlockedForSeconds:
+            retryAfterSeconds
         });
       }
 
@@ -875,6 +961,86 @@ app.post(
        * -----------------------------------------------------------------------
        */
 
+      // Only count this against the 3-per-email allowance now that a real
+      // code was actually generated and emailed (not for idempotent
+      // "already sent" replies or rate-limited resends above).
+      await adminDb.runTransaction(
+        async (transaction) => {
+          const snap =
+            await transaction.get(
+              rateLimitRef
+            );
+
+          const data =
+            snap.exists
+              ? snap.data()
+              : null;
+
+          const now =
+            Date.now();
+
+          const currentBlockedUntil =
+            data?.sendBlockedUntil?.toDate?.();
+
+          /*
+           * BUGFIX: only treat this as a fresh cycle if a block was
+           * previously SET and has since expired. Using `!currentBlockedUntil`
+           * alone was wrong - sendBlockedUntil is also null before the
+           * limit has ever been hit (sends #1 and #2), which was
+           * resetting the count to 0 on every single send and made the
+           * 3-send limit unreachable.
+           */
+          const blockHasExpired =
+            Boolean(currentBlockedUntil) &&
+            currentBlockedUntil.getTime() <= now;
+
+          const currentCount =
+            blockHasExpired
+              ? 0
+              : Number(
+                  data?.sendCount || 0
+                );
+
+          const nextCount =
+            currentCount + 1;
+
+          transaction.set(
+            rateLimitRef,
+            {
+              email:
+                userRecord.email
+                  .trim()
+                  .toLowerCase(),
+
+              sendCount:
+                nextCount,
+
+              sendBlockedUntil:
+                nextCount >=
+                MAX_OTP_SEND_ATTEMPTS
+                  ? admin.firestore.Timestamp.fromDate(
+                      new Date(
+                        now +
+                        OTP_SEND_BLOCK_MS
+                      )
+                    )
+                  : null,
+
+              lastSentAt:
+                admin.firestore.FieldValue
+                  .serverTimestamp(),
+
+              updatedAt:
+                admin.firestore.FieldValue
+                  .serverTimestamp()
+            },
+            {
+              merge: true
+            }
+          );
+        }
+      );
+
       return res.json({
         ok: true,
 
@@ -989,6 +1155,45 @@ app.post(
       }
 
       // -----------------------------------------------------------------------
+      // OTP VERIFY LIMIT: max 3 wrong guesses per email (across any code),
+      // then a 1-hour block. Independent of the send limit above, and
+      // independent of the per-code `attempts` check further below.
+      // -----------------------------------------------------------------------
+
+      const rateLimitRef =
+        getOtpRateLimitRef(
+          userRecord.email
+        );
+
+      const rateLimitSnapshot =
+        await rateLimitRef.get();
+
+      const rateLimitData =
+        rateLimitSnapshot.exists
+          ? rateLimitSnapshot.data()
+          : null;
+
+      const verifyBlockedUntil =
+        rateLimitData?.verifyBlockedUntil?.toDate?.();
+
+      if (
+        verifyBlockedUntil &&
+        verifyBlockedUntil.getTime() > Date.now()
+      ) {
+        const retryAfterSeconds =
+          getRemainingSeconds(
+            verifyBlockedUntil
+          );
+
+        return res.status(429).json({
+          message:
+            `Too many incorrect attempts. Please try again in ${formatDuration(retryAfterSeconds)}.`,
+          verifyBlockedForSeconds:
+            retryAfterSeconds
+        });
+      }
+
+      // -----------------------------------------------------------------------
       // Load OTP
       // -----------------------------------------------------------------------
 
@@ -1078,6 +1283,86 @@ app.post(
         submittedOtpHash !==
         otpData.otpHash
       ) {
+        // Cross-code wrong-guess counter (separate from the per-code
+        // `attempts` check below, which only guards a single OTP).
+        const nextWrongAttempts =
+          await adminDb.runTransaction(
+            async (transaction) => {
+              const snap =
+                await transaction.get(
+                  rateLimitRef
+                );
+
+              const data =
+                snap.exists
+                  ? snap.data()
+                  : null;
+
+              const current =
+                Number(
+                  data?.wrongAttempts || 0
+                ) + 1;
+
+              const now =
+                Date.now();
+
+              transaction.set(
+                rateLimitRef,
+                {
+                  email:
+                    userRecord.email
+                      .trim()
+                      .toLowerCase(),
+
+                  wrongAttempts:
+                    current >=
+                    MAX_OTP_WRONG_ATTEMPTS
+                      ? 0
+                      : current,
+
+                  verifyBlockedUntil:
+                    current >=
+                    MAX_OTP_WRONG_ATTEMPTS
+                      ? admin.firestore.Timestamp.fromDate(
+                          new Date(
+                            now +
+                            OTP_VERIFY_BLOCK_MS
+                          )
+                        )
+                      : data?.verifyBlockedUntil ||
+                        null,
+
+                  updatedAt:
+                    admin.firestore.FieldValue
+                      .serverTimestamp()
+                },
+                {
+                  merge: true
+                }
+              );
+
+              return current;
+            }
+          );
+
+        if (
+          nextWrongAttempts >=
+          MAX_OTP_WRONG_ATTEMPTS
+        ) {
+          // Invalidate the current code too - it can't keep being guessed
+          // during the 1-hour block.
+          await otpRef.delete();
+
+          return res.status(429).json({
+            message:
+              `Too many incorrect attempts. Please try again in ${formatDuration(OTP_VERIFY_BLOCK_MS / 1000)}.`,
+            verifyBlockedForSeconds:
+              Math.floor(
+                OTP_VERIFY_BLOCK_MS / 1000
+              )
+          });
+        }
+
         const nextAttempts =
           attempts + 1;
 
@@ -1120,6 +1405,9 @@ app.post(
       );
 
       await otpRef.delete();
+
+      // Clear the send/verify limiters for this email - the flow is done.
+      await rateLimitRef.delete();
 
       return res.json({
         ok: true,
