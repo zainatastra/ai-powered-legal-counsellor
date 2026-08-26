@@ -1,24 +1,22 @@
 import React from 'react';
 
-const SHIMMER = 'loading-skeleton-shimmer';
-
-const SkeletonBlock = ({ style, className = '' }) => (
-  <div className={`${SHIMMER} ${className}`} style={style} aria-hidden="true" />
+const SkeletonBlock = ({ style, className = '', dark = false }) => (
+  <div className={`skeleton ${dark ? 'on-dark' : ''} ${className}`.trim()} style={style} aria-hidden="true" />
 );
 
 const BrandSkeleton = ({ dark = false }) => (
   <div style={styles.brandRow}>
-    <SkeletonBlock style={{ ...styles.brandMark, ...(dark ? styles.darkSkeleton : {}) }} />
+    <SkeletonBlock dark={dark} style={styles.brandMark} />
     <div style={styles.brandText}>
-      <SkeletonBlock style={{ ...styles.brandLine, ...(dark ? styles.darkSkeleton : {}) }} />
-      <SkeletonBlock style={{ ...styles.brandSubLine, ...(dark ? styles.darkSkeleton : {}) }} />
+      <SkeletonBlock dark={dark} style={styles.brandLine} />
+      <SkeletonBlock dark={dark} style={styles.brandSubLine} />
     </div>
   </div>
 );
 
 const AuthSkeleton = () => (
   <div style={styles.authPage}>
-    <div style={styles.authContent}>
+    <div className="alc-loading-auth-content" style={styles.authContent}>
       <BrandSkeleton />
 
       <SkeletonBlock style={styles.authToggle} />
@@ -56,31 +54,31 @@ const SessionSkeleton = () => (
 
 const ChatbotSkeleton = () => (
   <div style={styles.chatPage}>
-    <aside style={styles.chatSidebar}>
+    <aside className="alc-loading-sidebar" style={styles.chatSidebar}>
       <BrandSkeleton dark />
 
-      <SkeletonBlock style={{ ...styles.chatUserCard, ...styles.darkSkeleton }} />
-      <SkeletonBlock style={{ ...styles.chatNewButton, ...styles.darkSkeleton }} />
+      <SkeletonBlock dark style={styles.chatUserCard} />
+      <SkeletonBlock dark style={styles.chatNewButton} />
 
       <div style={styles.chatHistoryHead}>
-        <SkeletonBlock style={{ ...styles.chatHistoryTitle, ...styles.darkSkeleton }} />
-        <SkeletonBlock style={{ ...styles.chatHistoryCount, ...styles.darkSkeleton }} />
+        <SkeletonBlock dark style={styles.chatHistoryTitle} />
+        <SkeletonBlock dark style={styles.chatHistoryCount} />
       </div>
 
       <div style={styles.chatHistoryList}>
         {[1, 2, 3].map((item) => (
           <div key={item} style={styles.chatHistoryItem}>
-            <SkeletonBlock style={{ ...styles.chatHistoryIcon, ...styles.darkSkeleton }} />
-            <SkeletonBlock style={{ ...styles.chatHistoryLine, ...styles.darkSkeleton }} />
+            <SkeletonBlock dark style={styles.chatHistoryIcon} />
+            <SkeletonBlock dark style={styles.chatHistoryLine} />
           </div>
         ))}
       </div>
 
-      <SkeletonBlock style={{ ...styles.chatLogout, ...styles.darkSkeleton }} />
+      <SkeletonBlock dark style={styles.chatLogout} />
     </aside>
 
     <main style={styles.chatMain}>
-      <header style={styles.chatHeader}>
+      <header className="alc-loading-chat-header" style={styles.chatHeader}>
         <div style={styles.chatHeaderIdentity}>
           <SkeletonBlock style={styles.chatHeaderLogo} />
           <div>
@@ -91,7 +89,7 @@ const ChatbotSkeleton = () => (
         <SkeletonBlock style={styles.chatHeaderStatus} />
       </header>
 
-      <section style={styles.chatContent}>
+      <section className="alc-loading-chat-content" style={styles.chatContent}>
         <SkeletonBlock style={styles.chatWelcomeIcon} />
         <SkeletonBlock style={styles.chatWelcomeEyebrow} />
         <SkeletonBlock style={styles.chatWelcomeTitle} />
@@ -126,9 +124,9 @@ const LawyersSkeleton = () => (
       <SkeletonBlock style={styles.lawyersHeaderButton} />
     </div>
 
-    <div style={styles.lawyersGrid}>
+    <div className="alc-loading-lawyers-grid" style={styles.lawyersGrid}>
       {[1, 2, 3].map((item) => (
-        <div key={item} style={styles.lawyerCard}>
+        <div key={item} className="alc-loading-lawyer-card" style={styles.lawyerCard}>
           <SkeletonBlock style={styles.lawyerImage} />
           <SkeletonBlock style={styles.lawyerName} />
           <SkeletonBlock style={styles.lawyerField} />
@@ -156,22 +154,6 @@ const Loading = ({ variant = 'session' }) => {
       {content}
 
       <style>{`
-        @keyframes alcSkeletonShimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-
-        .${SHIMMER} {
-          background: linear-gradient(
-            100deg,
-            rgba(226, 222, 213, 0.68) 20%,
-            rgba(249, 247, 242, 0.98) 50%,
-            rgba(226, 222, 213, 0.68) 80%
-          );
-          background-size: 240% 100%;
-          animation: alcSkeletonShimmer 1.35s ease-in-out infinite;
-        }
-
         @media (max-width: 900px) {
           .alc-loading-sidebar {
             width: 240px !important;
@@ -206,12 +188,6 @@ const Loading = ({ variant = 'session' }) => {
             padding: 24px !important;
           }
         }
-
-        @media (prefers-reduced-motion: reduce) {
-          .${SHIMMER} {
-            animation: none !important;
-          }
-        }
       `}</style>
     </div>
   );
@@ -222,9 +198,9 @@ const styles = {
     width: '100%',
     minHeight: '100vh',
     overflow: 'hidden',
-    background: '#FCFBF8',
-    color: '#10243E',
-    fontFamily: "'Saira', 'Segoe UI', sans-serif"
+    background: 'var(--legal-ivory)',
+    color: 'var(--legal-navy)',
+    fontFamily: 'var(--font-family-base)'
   },
 
   // Shared
@@ -247,16 +223,12 @@ const styles = {
   brandLine: {
     width: '150px',
     height: '13px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   brandSubLine: {
     width: '96px',
     height: '8px',
-    borderRadius: '999px'
-  },
-  darkSkeleton: {
-    background: 'linear-gradient(100deg, rgba(255,255,255,0.055) 20%, rgba(255,255,255,0.13) 50%, rgba(255,255,255,0.055) 80%)',
-    backgroundSize: '240% 100%'
+    borderRadius: 'var(--radius-full)'
   },
 
   // Auth
@@ -264,7 +236,7 @@ const styles = {
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
-    background: '#FCFBF8'
+    background: 'var(--legal-ivory)'
   },
   authContent: {
     width: '100%',
@@ -275,34 +247,34 @@ const styles = {
   authToggle: {
     width: '100%',
     height: '56px',
-    borderRadius: '999px',
-    margin: '28px 0 16px'
+    borderRadius: 'var(--radius-full)',
+    margin: '20px 0 16px'
   },
   authCard: {
     width: '100%',
-    background: '#FFFFFF',
-    border: '1px solid #E6E0D5',
-    borderRadius: '28px',
-    padding: '34px',
+    background: 'var(--legal-surface)',
+    border: '1px solid var(--legal-border)',
+    borderRadius: '20px',
+    padding: '40px',
     boxSizing: 'border-box',
-    boxShadow: '0 18px 55px rgba(11,23,42,0.055)'
+    boxShadow: '0 16px 40px rgba(16,36,62,0.14)'
   },
   authEyebrow: {
     width: '125px',
     height: '10px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '14px'
   },
   authTitle: {
     width: '58%',
     height: '31px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '12px'
   },
   authSubtitle: {
     width: '86%',
     height: '12px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '30px'
   },
   authFieldGroup: {
@@ -311,24 +283,24 @@ const styles = {
   authLabel: {
     width: '90px',
     height: '10px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '9px'
   },
   authLabelShort: {
     width: '72px',
     height: '10px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '9px'
   },
   authInput: {
     width: '100%',
     height: '48px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   authButton: {
     width: '100%',
-    height: '50px',
-    borderRadius: '999px',
+    height: '48px',
+    borderRadius: 'var(--radius-full)',
     marginTop: '10px'
   },
 
@@ -338,7 +310,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#FCFBF8'
+    background: 'var(--legal-ivory)'
   },
   sessionCenter: {
     width: '230px',
@@ -355,12 +327,12 @@ const styles = {
   sessionTitle: {
     width: '180px',
     height: '14px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   sessionSubtitle: {
     width: '130px',
     height: '9px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
 
   // Chatbot
@@ -368,14 +340,14 @@ const styles = {
     display: 'flex',
     height: '100vh',
     width: '100%',
-    background: '#FCFBF8'
+    background: 'var(--legal-ivory)'
   },
   chatSidebar: {
     width: '280px',
     minWidth: '280px',
     height: '100vh',
     boxSizing: 'border-box',
-    background: '#0B172A',
+    background: 'var(--legal-sidebar-bg)',
     padding: '22px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
@@ -390,7 +362,7 @@ const styles = {
   chatNewButton: {
     width: '100%',
     height: '46px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginTop: '14px'
   },
   chatHistoryHead: {
@@ -402,12 +374,12 @@ const styles = {
   chatHistoryTitle: {
     width: '125px',
     height: '9px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatHistoryCount: {
     width: '22px',
     height: '22px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatHistoryList: {
     display: 'flex',
@@ -429,12 +401,12 @@ const styles = {
   chatHistoryLine: {
     width: '120px',
     height: '10px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatLogout: {
     width: '100%',
     height: '43px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginTop: 'auto'
   },
   chatMain: {
@@ -443,7 +415,7 @@ const styles = {
     height: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    background: '#FCFBF8'
+    background: 'var(--legal-ivory)'
   },
   chatHeader: {
     minHeight: '70px',
@@ -452,7 +424,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '1px solid #E6E0D5'
+    borderBottom: '1px solid var(--legal-border)'
   },
   chatHeaderIdentity: {
     display: 'flex',
@@ -467,18 +439,18 @@ const styles = {
   chatHeaderTitle: {
     width: '150px',
     height: '12px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '6px'
   },
   chatHeaderSub: {
     width: '112px',
     height: '8px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatHeaderStatus: {
     width: '94px',
     height: '10px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatContent: {
     flex: 1,
@@ -499,35 +471,35 @@ const styles = {
   chatWelcomeEyebrow: {
     width: '195px',
     height: '9px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '13px'
   },
   chatWelcomeTitle: {
     width: '390px',
     maxWidth: '80%',
     height: '31px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '10px'
   },
   chatWelcomeTitleShort: {
     width: '310px',
     maxWidth: '68%',
     height: '31px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '17px'
   },
   chatWelcomeText: {
     width: '440px',
     maxWidth: '82%',
     height: '11px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '8px'
   },
   chatWelcomeTextShort: {
     width: '330px',
     maxWidth: '65%',
     height: '11px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   chatMessages: {
     width: '100%',
@@ -571,20 +543,20 @@ const styles = {
   composerHint: {
     width: '130px',
     height: '9px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '7px'
   },
   composer: {
     width: '100%',
     maxWidth: '900px',
     height: '54px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     margin: '0 auto'
   },
   composerDisclaimer: {
     width: '210px',
     height: '8px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     margin: '7px auto 0'
   },
 
@@ -593,7 +565,7 @@ const styles = {
     minHeight: '100vh',
     padding: '32px clamp(22px, 5vw, 70px)',
     boxSizing: 'border-box',
-    background: '#FCFBF8'
+    background: 'var(--legal-ivory)'
   },
   lawyersHeader: {
     display: 'flex',
@@ -604,12 +576,12 @@ const styles = {
   lawyersHeading: {
     width: '210px',
     height: '28px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   lawyersHeaderButton: {
     width: '100px',
     height: '42px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   },
   lawyersGrid: {
     display: 'grid',
@@ -619,8 +591,8 @@ const styles = {
     margin: '0 auto'
   },
   lawyerCard: {
-    background: '#FFFFFF',
-    border: '1px solid #E6E0D5',
+    background: 'var(--legal-surface)',
+    border: '1px solid var(--legal-border)',
     borderRadius: '26px',
     padding: '28px 24px 24px',
     display: 'flex',
@@ -637,19 +609,19 @@ const styles = {
   lawyerName: {
     width: '62%',
     height: '14px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '10px'
   },
   lawyerField: {
     width: '40%',
     height: '10px',
-    borderRadius: '999px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '25px'
   },
   lawyerButton: {
     width: '100%',
     height: '44px',
-    borderRadius: '999px'
+    borderRadius: 'var(--radius-full)'
   }
 };
 

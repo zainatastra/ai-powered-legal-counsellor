@@ -662,26 +662,26 @@ const EmailVerification = ({
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.icon}>
-            ✓
-          </div>
+      <div className="auth-page">
+        <div className="ambient-glow" />
+        <div className="auth-shell">
+          <div className="auth-card" style={{ textAlign: 'center', alignItems: 'center' }}>
+            <div className="modal-icon-circle brand" style={{ width: 58, height: 58, margin: '0 auto 20px', fontSize: '25px', fontWeight: 700 }}>
+              ✓
+            </div>
 
-          <div style={styles.eyebrow}>
-            EMAIL VERIFICATION
-          </div>
+            <div className="auth-eyebrow">EMAIL VERIFICATION</div>
 
-          <h1 style={styles.heading}>
-            Check your inbox
-          </h1>
+            <h1 className="auth-heading">Check your inbox</h1>
 
-          <p style={styles.description}>
-            Sending your verification code...
-          </p>
+            <p className="auth-intro" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)' }}>
+              <span className="spinner" aria-hidden="true" />
+              <span>Sending your verification code...</span>
+            </p>
 
-          <div style={styles.email}>
-            {displayedEmail}
+            <div className="info-chip">
+              {displayedEmail}
+            </div>
           </div>
         </div>
       </div>
@@ -693,441 +693,152 @@ const EmailVerification = ({
   // ---------------------------------------------------------------------------
 
   return (
-    <div style={styles.container}>
-      <div style={styles.overlay} />
+    <div className="auth-page">
+      <div className="ambient-glow" />
 
-      <div style={styles.card}>
-        <div style={styles.icon}>
-          ✓
-        </div>
+      <div className="auth-shell">
+        <div className="auth-card" style={{ textAlign: 'center', alignItems: 'center' }}>
+          <div className="modal-icon-circle brand" style={{ width: 58, height: 58, margin: '0 auto 20px', fontSize: '25px', fontWeight: 700 }}>
+            ✓
+          </div>
 
-        <div style={styles.eyebrow}>
-          EMAIL VERIFICATION
-        </div>
+          <div className="auth-eyebrow">
+            EMAIL VERIFICATION
+          </div>
 
-        <h1 style={styles.heading}>
-          Check your inbox
-        </h1>
+          <h1 className="auth-heading">
+            Check your inbox
+          </h1>
 
-        <p style={styles.description}>
-          We sent a 5-digit code to
-        </p>
+          <p className="auth-intro" style={{ margin: '0 auto 4px', maxWidth: '390px' }}>
+            We sent a 5-digit code to
+          </p>
 
-        <div style={styles.email}>
-          {displayedEmail}
-        </div>
+          <div className="info-chip">
+            {displayedEmail}
+          </div>
 
-        <p style={styles.helperText}>
-          Enter the code below to verify
-          your email address.
-        </p>
+          <p className="auth-intro" style={{ margin: '0 0 24px' }}>
+            Enter the code below to verify
+            your email address.
+          </p>
 
-        <div
-          style={styles.otpContainer}
-          onPaste={handleOtpPaste}
-        >
-          {otp.map(
-            (digit, index) => (
-              <input
-                key={index}
-                ref={(element) => {
-                  inputRefs.current[
-                    index
-                  ] = element;
-                }}
-                type="text"
-                inputMode="numeric"
-                autoComplete={
-                  index === 0
-                    ? 'one-time-code'
-                    : 'off'
-                }
-                maxLength={1}
-                value={digit}
-                onChange={(event) =>
-                  handleOtpChange(
-                    index,
-                    event.target.value
+          <div
+            className="otp-row"
+            onPaste={handleOtpPaste}
+          >
+            {otp.map(
+              (digit, index) => (
+                <input
+                  key={index}
+                  ref={(element) => {
+                    inputRefs.current[
+                      index
+                    ] = element;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete={
+                    index === 0
+                      ? 'one-time-code'
+                      : 'off'
+                  }
+                  maxLength={1}
+                  value={digit}
+                  onChange={(event) =>
+                    handleOtpChange(
+                      index,
+                      event.target.value
+                    )
+                  }
+                  onKeyDown={(event) =>
+                    handleOtpKeyDown(
+                      index,
+                      event
+                    )
+                  }
+                  disabled={verifying || otpLockSeconds > 0}
+                  aria-label={`Verification digit ${index + 1}`}
+                  className={`otp-input ${digit ? 'filled' : ''}`}
+                />
+              )
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              verifyOtp()
+            }
+            disabled={
+              verifying ||
+              otpLockSeconds > 0 ||
+              otp.some(
+                (digit) =>
+                  !digit
+              )
+            }
+            className="btn btn-primary btn-lg"
+            style={{ width: '100%' }}
+          >
+            {verifying
+              ? 'Verifying...'
+              : otpLockSeconds > 0
+                ? `Try again in ${otpLockSeconds}s`
+                : 'Continue'}
+          </button>
+
+          {message && (
+            <div className="inline-feedback success" style={{ width: '100%', boxSizing: 'border-box' }}>
+              {message}
+            </div>
+          )}
+
+          {error && (
+            <div className="inline-feedback error" style={{ width: '100%', boxSizing: 'border-box' }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ minHeight: '25px', marginTop: '22px', color: 'var(--legal-muted)', fontSize: 'var(--fs-md)' }}>
+            {resendTimer > 0 ? (
+              <span>
+                Resend code in{' '}
+                <strong>
+                  {resendTimer}s
+                </strong>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  sendVerificationCode(
+                    false
                   )
                 }
-                onKeyDown={(event) =>
-                  handleOtpKeyDown(
-                    index,
-                    event
-                  )
-                }
-                disabled={verifying || otpLockSeconds > 0}
-                aria-label={`Verification digit ${index + 1}`}
-                style={{
-                  ...styles.otpInput,
-                  ...(digit
-                    ? styles.otpInputFilled
-                    : {})
-                }}
-              />
-            )
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() =>
-            verifyOtp()
-          }
-          disabled={
-            verifying ||
-            otpLockSeconds > 0 ||
-            otp.some(
-              (digit) =>
-                !digit
-            )
-          }
-          style={{
-            ...styles.primaryButton,
-            ...(verifying ||
-            otpLockSeconds > 0 ||
-            otp.some(
-              (digit) =>
-                !digit
-            )
-              ? styles.disabledButton
-              : {})
-          }}
-        >
-          {verifying
-            ? 'Verifying...'
-            : otpLockSeconds > 0
-              ? `Try again in ${otpLockSeconds}s`
-              : 'Continue'}
-        </button>
-
-        {message && (
-          <div
-            style={
-              styles.successMessage
-            }
-          >
-            {message}
+                disabled={resending}
+                className="link-btn"
+              >
+                {resending
+                  ? 'Sending...'
+                  : 'Resend code'}
+              </button>
+            )}
           </div>
-        )}
 
-        {error && (
-          <div
-            style={
-              styles.errorMessage
+          <button
+            type="button"
+            onClick={
+              handleBackToLogin
             }
+            className="link-btn"
+            style={{ marginTop: '20px' }}
           >
-            {error}
-          </div>
-        )}
-
-        <div style={styles.resendArea}>
-          {resendTimer > 0 ? (
-            <span>
-              Resend code in{' '}
-              <strong>
-                {resendTimer}s
-              </strong>
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                sendVerificationCode(
-                  false
-                )
-              }
-              disabled={resending}
-              style={
-                styles.resendButton
-              }
-            >
-              {resending
-                ? 'Sending...'
-                : 'Resend code'}
-            </button>
-          )}
+            ← Back to sign up
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={
-            handleBackToLogin
-          }
-          style={
-            styles.backButton
-          }
-        >
-          ← Back to sign up
-        </button>
       </div>
     </div>
   );
 };
-
-// -----------------------------------------------------------------------------
-// Styles
-// -----------------------------------------------------------------------------
-
-const styles = {
-  container: {
-    position: 'relative',
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-    boxSizing: 'border-box',
-    fontFamily:
-      'Saira, sans-serif',
-    background:
-      '#F7F8FA'
-  },
-
-  overlay: {
-    position: 'absolute',
-    inset: 0,
-    background:
-      'radial-gradient(circle at top, rgba(184,146,74,0.07), transparent 42%)',
-    pointerEvents: 'none'
-  },
-
-  card: {
-    position: 'relative',
-    width: '100%',
-    maxWidth: '500px',
-    boxSizing: 'border-box',
-    padding: '44px 42px',
-    background:
-      '#FFFFFF',
-    border:
-      '1px solid #E4E7EC',
-    borderRadius: '22px',
-    boxShadow:
-      '0 22px 60px rgba(16,36,62,0.09)',
-    textAlign:
-      'center'
-  },
-
-  icon: {
-    width: '58px',
-    height: '58px',
-    margin:
-      '0 auto 20px',
-    borderRadius:
-      '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background:
-      '#10243E',
-    color:
-      '#D0AE6B',
-    fontSize: '25px',
-    fontWeight: '700'
-  },
-
-  eyebrow: {
-    marginBottom: '10px',
-    color: '#B8924A',
-    fontSize: '11px',
-    fontWeight: '700',
-    letterSpacing: '2px'
-  },
-
-  heading: {
-    margin:
-      '0 0 14px',
-    color:
-      '#10243E',
-    fontSize: '30px',
-    fontWeight: '700'
-  },
-
-  description: {
-    margin:
-      '0 auto 4px',
-    maxWidth: '390px',
-    color:
-      '#7A8492',
-    fontSize: '14px',
-    lineHeight: '1.65'
-  },
-
-  email: {
-    margin:
-      '10px 0 20px',
-    padding:
-      '13px 16px',
-    background:
-      '#F3F5F8',
-    border:
-      '1px solid #E0E4EA',
-    borderRadius:
-      '10px',
-    color:
-      '#172A46',
-    fontSize: '14px',
-    fontWeight: '600',
-    wordBreak:
-      'break-word'
-  },
-
-  helperText: {
-    margin:
-      '0 0 24px',
-    color:
-      '#7A8492',
-    fontSize: '14px',
-    lineHeight:
-      '1.6'
-  },
-
-  otpContainer: {
-    display: 'flex',
-    justifyContent:
-      'center',
-    gap: '10px',
-    margin:
-      '0 auto 24px'
-  },
-
-  otpInput: {
-    width: '58px',
-    height: '62px',
-    boxSizing:
-      'border-box',
-    border:
-      '1px solid #D7DDE6',
-    borderRadius:
-      '12px',
-    background:
-      '#FFFFFF',
-    color:
-      '#10243E',
-    fontFamily:
-      'Saira, sans-serif',
-    fontSize: '25px',
-    fontWeight: '700',
-    textAlign:
-      'center',
-    outline:
-      'none',
-    transition:
-      'border-color 160ms ease, box-shadow 160ms ease, background 160ms ease'
-  },
-
-  otpInputFilled: {
-    border:
-      '1px solid #10243E',
-    background:
-      '#F7F9FC',
-    boxShadow:
-      '0 0 0 2px rgba(16,36,62,0.05)'
-  },
-
-  primaryButton: {
-    width: '100%',
-    minHeight: '50px',
-    border:
-      'none',
-    borderRadius:
-      '10px',
-    background:
-      '#10243E',
-    color:
-      '#FFFFFF',
-    fontFamily:
-      'Saira, sans-serif',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor:
-      'pointer'
-  },
-
-  disabledButton: {
-    opacity:
-      0.55,
-    cursor:
-      'not-allowed'
-  },
-
-  resendArea: {
-    minHeight: '25px',
-    marginTop:
-      '22px',
-    color:
-      '#8A929D',
-    fontSize: '14px'
-  },
-
-  resendButton: {
-    border:
-      'none',
-    background:
-      'transparent',
-    color:
-      '#10243E',
-    fontFamily:
-      'Saira, sans-serif',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor:
-      'pointer',
-    padding: 0
-  },
-
-  successMessage: {
-    marginTop:
-      '18px',
-    padding:
-      '11px 14px',
-    borderRadius:
-      '9px',
-    background:
-      '#F1F8F3',
-    border:
-      '1px solid #D5E8DA',
-    color:
-      '#2E6B4A',
-    fontSize: '13px',
-    lineHeight:
-      '1.5'
-  },
-
-  errorMessage: {
-    marginTop:
-      '18px',
-    padding:
-      '11px 14px',
-    borderRadius:
-      '9px',
-    background:
-      '#FFF5F3',
-    border:
-      '1px solid #F0D5CF',
-    color:
-      '#9A4639',
-    fontSize: '13px',
-    lineHeight:
-      '1.5'
-  },
-
-  backButton: {
-    marginTop:
-      '20px',
-    border:
-      'none',
-    background:
-      'transparent',
-    color:
-      '#7A8492',
-    fontFamily:
-      'Saira, sans-serif',
-    fontSize: '13px',
-    cursor:
-      'pointer'
-  }
-};
-
 export default EmailVerification;
