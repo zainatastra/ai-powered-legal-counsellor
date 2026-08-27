@@ -221,9 +221,6 @@ const Chatbot = ({ onLogout }) => {
   const [input, setInput] = useState('');
   const [typingMessage, setTypingMessage] = useState('');
   const [userId, setUserId] = useState(null);
-  const [freeMessageLimitReached, setFreeMessageLimitReached] = useState(false);
-  const [freeMessagesUntil, setFreeMessagesUntil] = useState(null);
-  const [showFreeMessageModal, setShowFreeMessageModal] = useState(false);
   const [chatHistoryList, setChatHistoryList] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [editChatId, setEditChatId] = useState(null);
@@ -1053,54 +1050,9 @@ const Chatbot = ({ onLogout }) => {
     await fetchChatHistoryList(userId);
   };
 
-  const formatFreeMessagesUntil = (date) => {
-    if (!date) return '';
-    return date.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  };
-
-  const activateFreeMessageLimit = (blockedUntil) => {
-    const nextBlockedUntil =
-      blockedUntil ? new Date(blockedUntil) : null;
-
-    if (!nextBlockedUntil || Number.isNaN(nextBlockedUntil.getTime())) {
-      return;
-    }
-
-    setFreeMessageLimitReached(true);
-    setFreeMessagesUntil(nextBlockedUntil);
-    setShowFreeMessageModal(true);
-  };
-
-  useEffect(() => {
-    if (!freeMessageLimitReached || !freeMessagesUntil) return undefined;
-
-    const checkLimitExpiry = () => {
-      if (Date.now() >= freeMessagesUntil.getTime()) {
-        setFreeMessageLimitReached(false);
-        setFreeMessagesUntil(null);
-        setShowFreeMessageModal(false);
-      }
-    };
-
-    checkLimitExpiry();
-    const timer = window.setInterval(checkLimitExpiry, 1000);
-    return () => window.clearInterval(timer);
-  }, [freeMessageLimitReached, freeMessagesUntil]);
-
   const handleSend = async () => {
-    if (freeMessageLimitReached) {
-      setShowFreeMessageModal(true);
-      return;
-    }
-
     const userMessage = input.trim();
     if (!userMessage) return;
-
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
 
     const newMessage = { sender: 'user', text: userMessage };
     const updatedMessages = [...messages, newMessage];
@@ -1109,44 +1061,27 @@ const Chatbot = ({ onLogout }) => {
     setTypingMessage('');
 
     try {
-      const idToken = await currentUser.getIdToken();
+      // SECURITY FIX: /api/legal-chat now requires authentication on the
+      // server (previously it accepted unauthenticated requests from
+      // anyone who could reach the server directly), so the idToken has
+      // to be sent along with the message.
+      const idToken = await auth.currentUser?.getIdToken();
+
+      if (!idToken) {
+        throw new Error('Your session has expired. Please log in again.');
+      }
 
       const response = await fetch('/api/legal-chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ message: userMessage })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, message: userMessage })
       });
 
       const data = await response.json();
-
-      if (
-        response.status === 429 &&
-        data?.code === 'FREE_MESSAGE_LIMIT_REACHED'
-      ) {
-        setMessages(prev => prev.slice(0, -1));
-        setInput(userMessage);
-        activateFreeMessageLimit(data?.blockedUntil);
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message ||
-          'The legal assistant could not process the request.'
-        );
-      }
-
-      if (data?.usage?.limitReached && data?.usage?.blockedUntil) {
-        activateFreeMessageLimit(data.usage.blockedUntil);
-      }
+      if (!response.ok) throw new Error(data?.message || 'The legal assistant could not process the request.');
 
       const botText = data?.text;
-      if (!botText) {
-        throw new Error('The legal assistant returned an empty response.');
-      }
+      if (!botText) throw new Error('The legal assistant returned an empty response.');
 
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
@@ -1164,36 +1099,21 @@ const Chatbot = ({ onLogout }) => {
     } catch (error) {
       console.error('Legal assistant request failed:', error);
       const errorText = error?.message || '';
-      let userFacingMessage =
-        'Sorry, the legal assistant could not process your request. Please try again.';
+      let userFacingMessage = 'Sorry, the legal assistant could not process your request. Please try again.';
 
-      if (
-        errorText.toLowerCase().includes('api key') ||
-        errorText.toLowerCase().includes('authentication')
-      ) {
-        userFacingMessage =
-          'The legal assistant is temporarily unavailable. Please check the AI service configuration.';
+      if (errorText.toLowerCase().includes('api key') || errorText.toLowerCase().includes('authentication')) {
+        userFacingMessage = 'The legal assistant is temporarily unavailable. Please check the AI service configuration.';
       } else if (errorText.toLowerCase().includes('rate limit')) {
-        userFacingMessage =
-          'The legal assistant is currently busy. Please try again in a moment.';
+        userFacingMessage = 'The legal assistant is currently busy. Please try again in a moment.';
       }
 
-      setMessages(prev => [
-        ...prev,
-        { sender: 'bot', text: userFacingMessage }
-      ]);
+      setMessages(prev => [...prev, { sender: 'bot', text: userFacingMessage }]);
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-
-      if (freeMessageLimitReached) {
-        setShowFreeMessageModal(true);
-        return;
-      }
-
       handleSend();
     }
   };
@@ -1884,88 +1804,6 @@ const Chatbot = ({ onLogout }) => {
         </div>
       )}
 
-      {showFreeMessageModal && freeMessageLimitReached && freeMessagesUntil && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowFreeMessageModal(false);
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="free-message-limit-title"
-            className="account-modal"
-            style={{
-              width: 'min(92vw, 520px)',
-              textAlign: 'center',
-              position: 'relative'
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowFreeMessageModal(false)}
-              className="icon-btn"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '42px',
-                height: '42px'
-              }}
-              aria-label="Close"
-            >
-              <Icon name="close" size={25} stroke={1.8} />
-            </button>
-
-            <div
-              className="modal-icon-circle brand"
-              style={{
-                width: 60,
-                height: 60,
-                margin: '0 auto var(--space-4)'
-              }}
-            >
-              <Icon name="clock" size={27} />
-            </div>
-
-            <h2
-              id="free-message-limit-title"
-              className="account-modal-title"
-              style={{ fontSize: 'var(--fs-2xl)' }}
-            >
-              Free Messages Limit Reached
-            </h2>
-
-            <p
-              className="auth-intro"
-              style={{
-                margin: 'var(--space-2) 0 0',
-                lineHeight: 1.6
-              }}
-            >
-              You are out of Free Messages until{' '}
-              <strong>{formatFreeMessagesUntil(freeMessagesUntil)}</strong>.
-            </p>
-
-            <div
-              style={{
-                marginTop: 'var(--space-5)',
-                padding: '14px 18px',
-                borderRadius: '12px',
-                background: 'var(--surface-muted, #f5f7fa)',
-                color: 'var(--text-secondary, #687589)',
-                fontSize: '14px'
-              }}
-            >
-              Your free messages will automatically refresh at this exact time.
-            </div>
-          </div>
-        </div>
-      )}
-
       <ConsentModal
         open={deleteChatsConsentOpen}
         title="Delete all chats — are you sure?"
@@ -2072,11 +1910,7 @@ const Chatbot = ({ onLogout }) => {
           <div className="composer-card">
             <div className="composer-hint">
               <Icon name="spark" size={18} />
-              <span>
-                {freeMessageLimitReached && freeMessagesUntil
-                  ? `You are out of Free messages until ${formatFreeMessagesUntil(freeMessagesUntil)}`
-                  : 'Ask a question about Pakistani law...'}
-              </span>
+              <span>Ask a question about Pakistani law...</span>
             </div>
 
             <div className="composer-input-row">

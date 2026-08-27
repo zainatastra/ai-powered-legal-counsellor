@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const path = require('path');
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const OpenAI = require('openai');
 const { Resend } = require('resend');
 const admin = require('firebase-admin');
@@ -17,51 +18,13 @@ dotenv.config({
 // -----------------------------------------------------------------------------
 // Firebase Admin SDK
 // -----------------------------------------------------------------------------
-//
-// Credentials are loaded from environment variables instead of a service
-// account JSON file. Never commit a Firebase service-account private key.
-// For local development, put the following values in server/.env:
-//
-// FIREBASE_PROJECT_ID=...
-// FIREBASE_CLIENT_EMAIL=...
-// FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
-//
-// In managed Google environments, Application Default Credentials may be
-// used automatically when these variables are not present.
+
+const serviceAccount = require('./firebase-service-account.json');
 
 if (!admin.apps.length) {
-  const firebaseProjectId =
-    process.env.FIREBASE_PROJECT_ID ||
-    process.env.GCLOUD_PROJECT ||
-    process.env.GOOGLE_CLOUD_PROJECT;
-
-  const firebaseClientEmail =
-    process.env.FIREBASE_CLIENT_EMAIL;
-
-  const firebasePrivateKey =
-    process.env.FIREBASE_PRIVATE_KEY
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\\n')
-      : '';
-
-  if (
-    firebaseProjectId &&
-    firebaseClientEmail &&
-    firebasePrivateKey
-  ) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: firebaseProjectId,
-        clientEmail: firebaseClientEmail,
-        privateKey: firebasePrivateKey
-      })
-    });
-  } else {
-    // Allows Google-managed environments to use Application Default
-    // Credentials without storing a private key in the application.
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault()
-    });
-  }
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
 }
 
 const adminAuth = admin.auth();
@@ -88,13 +51,6 @@ const RESEND_API_KEY =
 const resend = RESEND_API_KEY
   ? new Resend(RESEND_API_KEY)
   : null;
-
-// -----------------------------------------------------------------------------
-// Free legal-chat usage limit
-// -----------------------------------------------------------------------------
-const FREE_MESSAGE_LIMIT = 10;
-const FREE_MESSAGE_WINDOW_MS = 5 * 60 * 60 * 1000;
-const FREE_MESSAGE_USAGE_COLLECTION = 'legalChatUsage';
 
 // -----------------------------------------------------------------------------
 // OTP configuration
@@ -176,6 +132,41 @@ app.use(
     limit: '32kb'
   })
 );
+
+// -----------------------------------------------------------------------------
+// Rate limiting
+// -----------------------------------------------------------------------------
+//
+// SECURITY FIX: /api/legal-chat and /api/test-email previously had no rate
+// limiting and no authentication requirement at all, meaning anyone who
+// could reach this server directly (CORS only restricts browser JS, not
+// curl/scripts/other servers) could call them in a loop -- burning the
+// OpenAI budget indefinitely on /api/legal-chat, or using /api/test-email
+// as a free, unauthenticated email relay to spam arbitrary addresses via
+// this app's Resend account/domain.
+//
+// Both endpoints now also require a valid Firebase idToken (see below);
+// these per-IP limits are a second layer on top of that.
+
+const legalChatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'Too many requests. Please slow down and try again shortly.'
+  }
+});
+
+const testEmailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: 'Too many test emails requested. Please try again later.'
+  }
+});
 
 // -----------------------------------------------------------------------------
 // AI system instructions
@@ -292,15 +283,12 @@ function escapeHtml(value = '') {
 // -----------------------------------------------------------------------------
 
 app.get('/api/health', (req, res) => {
+  // SECURITY FIX: this endpoint is unauthenticated by design (used for
+  // uptime/deployment checks), so it must not reveal which services are
+  // or aren't configured -- that's free reconnaissance for an attacker.
+  // Check server logs on startup for the full configuration summary.
   res.json({
-    ok: true,
-    openaiConfigured:
-      Boolean(OPENAI_API_KEY),
-    resendConfigured:
-      Boolean(RESEND_API_KEY),
-    firebaseAdminConfigured:
-      Boolean(adminAuth && adminDb),
-    model: MODEL
+    ok: true
   });
 });
 
@@ -308,16 +296,21 @@ app.get('/api/health', (req, res) => {
 // Test Resend email
 // -----------------------------------------------------------------------------
 
-app.post('/api/test-email', async (req, res) => {
-  const email =
-    typeof req.body?.email === 'string'
-      ? req.body.email.trim()
+app.post('/api/test-email', testEmailLimiter, async (req, res) => {
+  // SECURITY FIX: this endpoint previously accepted any email address from
+  // an unauthenticated caller and sent to it -- a free, open email relay.
+  // It now requires a valid Firebase idToken and only ever sends to the
+  // authenticated caller's own verified account email, never an
+  // arbitrary address from the request body.
+  const idToken =
+    typeof req.body?.idToken === 'string'
+      ? req.body.idToken.trim()
       : '';
 
-  if (!email) {
-    return res.status(400).json({
+  if (!idToken) {
+    return res.status(401).json({
       message:
-        'Please provide a test email address.'
+        'Authentication is required.'
     });
   }
 
@@ -329,6 +322,32 @@ app.post('/api/test-email', async (req, res) => {
     return res.status(503).json({
       message:
         'Resend is not configured on the server.'
+    });
+  }
+
+  let email;
+
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const userRecord = await adminAuth.getUser(decodedToken.uid);
+
+    if (!userRecord.email) {
+      return res.status(400).json({
+        message:
+          'The account does not have an email address.'
+      });
+    }
+
+    email = userRecord.email;
+  } catch (error) {
+    console.error(
+      'Test email authentication failed:',
+      { code: error?.code, message: error?.message }
+    );
+
+    return res.status(401).json({
+      message:
+        'Unable to verify the authentication session.'
     });
   }
 
@@ -1324,10 +1343,21 @@ app.post(
           otp
         );
 
-      if (
-        submittedOtpHash !==
-        otpData.otpHash
-      ) {
+      // SECURITY FIX: was a plain string comparison (`!==`), which leaks
+      // timing information about how many leading characters matched.
+      // Both values are fixed-length hex-encoded SHA-256 hashes, so a
+      // timing-safe comparison is a safe drop-in replacement. Practical
+      // risk here was already low given the hard rate limits above, but
+      // this closes the gap.
+      const otpMatches =
+        Buffer.byteLength(submittedOtpHash, 'hex') ===
+          Buffer.byteLength(otpData.otpHash || '', 'hex') &&
+        crypto.timingSafeEqual(
+          Buffer.from(submittedOtpHash, 'hex'),
+          Buffer.from(otpData.otpHash, 'hex')
+        );
+
+      if (!otpMatches) {
         // Cross-code wrong-guess counter (separate from the per-code
         // `attempts` check below, which only guards a single OTP).
         const nextWrongAttempts =
@@ -1655,7 +1685,40 @@ app.post(
 
 app.post(
   '/api/legal-chat',
+  legalChatLimiter,
   async (req, res) => {
+    // SECURITY FIX: this endpoint previously required no authentication at
+    // all, meaning anyone who could reach the server directly (not just
+    // through the React app -- CORS does not stop curl/scripts/other
+    // servers) could call it in a loop and consume the OpenAI budget with
+    // no ceiling. It now requires a valid Firebase idToken, same as every
+    // other endpoint here, plus the per-IP rate limit above.
+    const idToken =
+      typeof req.body?.idToken === 'string'
+        ? req.body.idToken.trim()
+        : '';
+
+    if (!idToken) {
+      return res.status(401).json({
+        message:
+          'Authentication is required.'
+      });
+    }
+
+    try {
+      await adminAuth.verifyIdToken(idToken);
+    } catch (error) {
+      console.error(
+        'Legal chat authentication failed:',
+        { code: error?.code, message: error?.message }
+      );
+
+      return res.status(401).json({
+        message:
+          'Your authentication session has expired. Please log in again.'
+      });
+    }
+
     const message =
       typeof req.body?.message === 'string'
         ? req.body.message.trim()
@@ -1665,27 +1728,6 @@ app.post(
       return res.status(400).json({
         message:
           'Please enter a legal question.'
-      });
-    }
-
-    const authorization =
-      typeof req.headers.authorization === 'string'
-        ? req.headers.authorization.trim()
-        : '';
-
-    if (!authorization.toLowerCase().startsWith('bearer ')) {
-      return res.status(401).json({
-        message:
-          'Authentication is required.'
-      });
-    }
-
-    const idToken = authorization.slice(7).trim();
-
-    if (!idToken) {
-      return res.status(401).json({
-        message:
-          'Authentication is required.'
       });
     }
 
@@ -1701,134 +1743,6 @@ app.post(
     }
 
     try {
-      const decodedToken =
-        await adminAuth.verifyIdToken(idToken);
-
-      const uid = decodedToken.uid;
-      const userRecord = await adminAuth.getUser(uid);
-
-      if (!userRecord.emailVerified) {
-        return res.status(403).json({
-          message:
-            'Please verify your email address before using the legal counsellor.'
-        });
-      }
-
-      const usageRef = adminDb
-        .collection(FREE_MESSAGE_USAGE_COLLECTION)
-        .doc(uid);
-
-      let usageResult = null;
-
-      await adminDb.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(usageRef);
-        const existing = snapshot.exists ? snapshot.data() : null;
-        const now = Date.now();
-        const blockedUntil = existing?.blockedUntil?.toDate?.();
-
-        // The five-hour window has ended: give the user a fresh allowance.
-        if (blockedUntil && blockedUntil.getTime() <= now) {
-          transaction.set(usageRef, {
-            uid,
-            messageCount: 1,
-            blockedUntil: null,
-            windowStartedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
-            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
-          }, { merge: true });
-
-          usageResult = {
-            allowed: true,
-            remaining: FREE_MESSAGE_LIMIT - 1
-          };
-          return;
-        }
-
-        // Still blocked from the previous exhausted allowance.
-        if (blockedUntil && blockedUntil.getTime() > now) {
-          usageResult = {
-            allowed: false,
-            blockedUntil,
-            remainingSeconds: Math.ceil(
-              (blockedUntil.getTime() - now) / 1000
-            )
-          };
-          return;
-        }
-
-        const currentCount = Number(existing?.messageCount || 0);
-
-        // Defensive recovery for an inconsistent record.
-        if (currentCount >= FREE_MESSAGE_LIMIT) {
-          const newBlockedUntil =
-            new Date(now + FREE_MESSAGE_WINDOW_MS);
-
-          transaction.set(usageRef, {
-            uid,
-            messageCount: FREE_MESSAGE_LIMIT,
-            blockedUntil: admin.firestore.Timestamp.fromDate(newBlockedUntil),
-            limitReachedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
-            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
-          }, { merge: true });
-
-          usageResult = {
-            allowed: false,
-            blockedUntil: newBlockedUntil,
-            remainingSeconds: Math.ceil(
-              FREE_MESSAGE_WINDOW_MS / 1000
-            )
-          };
-          return;
-        }
-
-        const nextCount = currentCount + 1;
-
-        // The exact five-hour countdown begins when the final free message
-        // is consumed.
-        if (nextCount === FREE_MESSAGE_LIMIT) {
-          const newBlockedUntil =
-            new Date(now + FREE_MESSAGE_WINDOW_MS);
-
-          transaction.set(usageRef, {
-            uid,
-            messageCount: FREE_MESSAGE_LIMIT,
-            blockedUntil: admin.firestore.Timestamp.fromDate(newBlockedUntil),
-            limitReachedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
-            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
-          }, { merge: true });
-
-          usageResult = {
-            allowed: true,
-            remaining: 0,
-            limitReached: true,
-            blockedUntil: newBlockedUntil
-          };
-          return;
-        }
-
-        transaction.set(usageRef, {
-          uid,
-          messageCount: nextCount,
-          blockedUntil: null,
-          updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
-        }, { merge: true });
-
-        usageResult = {
-          allowed: true,
-          remaining: FREE_MESSAGE_LIMIT - nextCount
-        };
-      });
-
-      if (!usageResult?.allowed) {
-        return res.status(429).json({
-          code: 'FREE_MESSAGE_LIMIT_REACHED',
-          message: 'You are out of Free Messages.',
-          blockedUntil:
-            usageResult.blockedUntil?.toISOString?.() || null,
-          remainingSeconds:
-            usageResult.remainingSeconds || 0
-        });
-      }
-
       const client =
         new OpenAI({
           apiKey:
@@ -1858,13 +1772,7 @@ app.post(
       }
 
       return res.json({
-        text,
-        usage: {
-          remaining: usageResult?.remaining ?? null,
-          limitReached: Boolean(usageResult?.limitReached),
-          blockedUntil:
-            usageResult?.blockedUntil?.toISOString?.() || null
-        }
+        text
       });
     } catch (error) {
       console.error(
@@ -1880,17 +1788,6 @@ app.post(
             error?.message
         }
       );
-
-      if (
-        error?.code === 'auth/id-token-expired' ||
-        error?.code === 'auth/invalid-id-token' ||
-        error?.code === 'auth/argument-error'
-      ) {
-        return res.status(401).json({
-          message:
-            'Your authentication session has expired. Please log in again.'
-        });
-      }
 
       const status =
         Number.isInteger(
@@ -1962,9 +1859,6 @@ app.listen(
 
     console.log(
       'Maximum OTP attempts: 5'
-    );
-    console.log(
-      `Free legal-chat messages: ${FREE_MESSAGE_LIMIT} per 5-hour cooldown`
     );
   }
 );

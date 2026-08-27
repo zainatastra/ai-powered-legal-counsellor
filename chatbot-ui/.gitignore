@@ -19,6 +19,10 @@
 .env.test.local
 .env.production.local
 
+# editor backups
+*.orig
+*.save
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -26,5 +30,11 @@ yarn-error.log*
 *.zip
 *.png
 *.mp4
+# Required app assets -- exempted from the blanket *.png rule above,
+# otherwise they'd never be committed and the app would ship without a
+# logo/favicon.
+!public/logo.png
+!public/favicon.png
+
 # Firebase Admin private credential
 server/firebase-service-account.json

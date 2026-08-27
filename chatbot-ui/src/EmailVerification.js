@@ -6,31 +6,22 @@ import React, {
 
 import { auth } from './firebase';
 
-const API_BASE_URL = 'http://localhost:3001';
+/*
+ * SECURITY FIX: this was previously an absolute URL hardcoded to
+ * 'http://localhost:3001' -- meaning it would silently keep pointing at
+ * localhost (and fail outright) in any real deployment. It's now a
+ * same-origin relative path, matching how the rest of the app already
+ * talks to the backend (see chatbot.jsx's fetch('/api/legal-chat')).
+ * A relative path always inherits the page's own protocol, so it can
+ * never end up sending the ID token/OTP over a misconfigured http://
+ * endpoint in production -- which also means the previous
+ * isSecureApiEndpoint(...) guard is no longer needed and has been removed.
+ */
+const API_BASE_URL = '';
 
 const OTP_LENGTH = 5;
 
 const RESEND_COOLDOWN = 30;
-
-/*
- * SECURITY: only ever talk to the verification backend over HTTPS (or
- * localhost during development). Prevents the ID token / OTP from ever
- * being sent in plaintext if this is deployed with a misconfigured
- * http:// API_BASE_URL.
- */
-const isSecureApiEndpoint = (url) => {
-  try {
-    const parsed = new URL(url);
-
-    return (
-      parsed.protocol === 'https:' ||
-      parsed.hostname === 'localhost' ||
-      parsed.hostname === '127.0.0.1'
-    );
-  } catch {
-    return false;
-  }
-};
 
 const EmailVerification = ({
   email,
@@ -199,11 +190,6 @@ const EmailVerification = ({
         return;
       }
 
-      if (!isSecureApiEndpoint(API_BASE_URL)) {
-        throw new Error(
-          'Verification service endpoint is not securely configured.'
-        );
-      }
 
       const token =
         await refreshedUser.getIdToken(
@@ -523,11 +509,6 @@ const EmailVerification = ({
         return;
       }
 
-      if (!isSecureApiEndpoint(API_BASE_URL)) {
-        throw new Error(
-          'Verification service endpoint is not securely configured.'
-        );
-      }
 
       const token =
         await refreshedUser.getIdToken(

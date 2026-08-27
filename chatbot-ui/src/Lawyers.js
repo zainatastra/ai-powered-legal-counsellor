@@ -1,26 +1,38 @@
 // src/Lawyers.js
 import React from 'react';
 
+/*
+ * SECURITY/RELIABILITY FIX: previously hotlinked Freepik "premium" preview
+ * images directly (unclear licensing for production hotlinking, and the
+ * URLs can change or 404 at any time). Replaced with initials avatars
+ * generated client-side below -- no external image dependency at all.
+ */
 const dummyLawyers = [
   {
     name: 'Rabia Hafeez',
     field: 'Family Law',
-    image: 'https://img.freepik.com/premium-photo/female-lawyer-flat-design-cartoon-image_776894-120024.jpg',
     whatsapp: 'https://wa.me/923098609451'
   },
   {
     name: 'Muhammad Shahid Iqbal',
     field: 'Criminal Law',
-    image: 'https://img.freepik.com/premium-psd/d1-full-body-image-candidate-with-hopeful-stance-icon-imag-isolated-iconic-abstract-designs_1020495-774854.jpg?semt=ais_hybrid&w=740',
     whatsapp: 'https://wa.me/923026727015'
   },
   {
     name: 'Muhammad Zeeshan',
     field: 'Corporate Law',
-    image: 'https://img.freepik.com/premium-psd/d1-full-body-image-candidate-with-hopeful-stance-icon-imag-isolated-iconic-abstract-designs_1020495-774854.jpg?semt=ais_hybrid&w=740',
     whatsapp: 'https://wa.me/923000513123'
   }
 ];
+
+const getInitials = (name = '') =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
 
 const Lawyers = () => {
   return (
@@ -44,12 +56,9 @@ const Lawyers = () => {
               </div>
 
               <div className="lawyer-avatar-frame">
-                <img
-                  src={lawyer.image}
-                  alt={lawyer.name}
-                  className="lawyer-avatar"
-                  loading="lazy"
-                />
+                <div className="lawyer-avatar-initials" aria-hidden="true">
+                  {getInitials(lawyer.name)}
+                </div>
               </div>
 
               <div className="lawyer-card-body">

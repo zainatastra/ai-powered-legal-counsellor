@@ -20,7 +20,33 @@ const ResetPassword = ({ onBackToLogin }) => {
       await sendPasswordResetEmail(auth, email);
       setMessage('Password reset link sent! Please check your email.');
     } catch (error) {
-      setMessage(`Error: ${error.message}`);
+      // SECURITY FIX: was `Error: ${error.message}` -- surfacing Firebase's
+      // raw error text directly to the user. Mapped to safe, specific
+      // messages instead, matching the pattern already used in
+      // login.js/Signup.js. Deliberately does not distinguish "no account
+      // with that email" from other failures, to avoid confirming whether
+      // an email address has an account.
+      let errorMessage =
+        "We couldn't send the reset link right now. Please try again.";
+
+      switch (error?.code) {
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many attempts. Please wait a moment and try again.';
+          break;
+
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+          break;
+
+        default:
+          break;
+      }
+
+      setMessage(`Error: ${errorMessage}`);
     }
   };
 
