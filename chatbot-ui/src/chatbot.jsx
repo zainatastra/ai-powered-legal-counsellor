@@ -1120,11 +1120,13 @@ const Chatbot = ({ onLogout }) => {
   if (!userId) {
     return (
       <>
-        <div style={styles.loginRequired}>
-          <div style={styles.loginRequiredCard}>
-            <div style={styles.loginRequiredIcon}><Icon name="scale" size={27} /></div>
-            <h2 style={styles.loginRequiredTitle}>{accountDeleted ? 'Account deleted' : 'Login required'}</h2>
-            <p style={styles.loginRequiredText}>
+        <div className="page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-5)' }}>
+          <div className="auth-card" style={{ width: '100%', maxWidth: '420px', textAlign: 'center', alignItems: 'center' }}>
+            <div className="modal-icon-circle brand" style={{ width: 60, height: 60, margin: '0 auto var(--space-4)' }}>
+              <Icon name="scale" size={27} />
+            </div>
+            <h2 className="account-modal-title" style={{ fontSize: 'var(--fs-2xl)' }}>{accountDeleted ? 'Account deleted' : 'Login required'}</h2>
+            <p className="auth-intro" style={{ margin: 'var(--space-2) 0 0' }}>
               {accountDeleted ? 'Your account and stored data have been permanently removed.' : 'Please log in to use the legal counsellor.'}
             </p>
           </div>
@@ -1149,180 +1151,173 @@ const Chatbot = ({ onLogout }) => {
   }
 
   return (
-    <div style={styles.appShell}>
+    <div className="chat-shell">
       {isSidebarOpen && (
-        <aside style={styles.sidebar}>
-          <div style={styles.sidebarInner}>
-            <div style={styles.brandRow}>
-              <div style={styles.brandLogoBox}>
-                <img src={sidebarLogoSrc} alt="AI Legal Counsellor" style={styles.brandLogo} />
+        <aside className="chat-sidebar">
+          <div className="chat-brand-row">
+            <div className="chat-brand-logo-box">
+              <img src={sidebarLogoSrc} alt="AI Legal Counsellor" className="chat-brand-logo" />
+            </div>
+            <div className="chat-brand-copy">
+              <div className="chat-brand-title">AI Legal Counsellor</div>
+              <div className="chat-brand-subtitle">Pakistani legal assistance</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/lawyers'; }}
+            className="sidebar-lawyers-btn"
+          >
+            <Icon name="scale" size={18} />
+            <span>Lawyers</span>
+          </button>
+
+          <div className="sidebar-search">
+            <Icon name="search" size={18} />
+            <input
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+              placeholder="Search conversations"
+              className="sidebar-search-input"
+            />
+          </div>
+
+          <button type="button" onClick={() => { handleNewChat(); setHistorySearch(''); }} className="sidebar-new-chat-btn">
+            <span className="sidebar-new-chat-icon"><Icon name="plus" size={17} /></span>
+            <span>New conversation</span>
+          </button>
+
+          <div id="chat-history" className="sidebar-history-header">
+            <span>Recent conversations</span>
+            <span className="sidebar-history-count">{filteredHistory.length}</span>
+          </div>
+
+          <div className="sidebar-history-scroll">
+            {filteredHistory.length === 0 ? (
+              <div className="sidebar-empty-history">
+                <div className="sidebar-empty-icon"><Icon name="clock" size={23} /></div>
+                <div className="sidebar-empty-title">{historySearch ? 'No matches found' : 'No conversations yet'}</div>
+                <div className="sidebar-empty-text">{historySearch ? 'Try another search.' : 'Start a new legal conversation.'}</div>
               </div>
-              <div style={styles.brandCopy}>
-                <div style={styles.brandTitle}>AI Legal Counsellor</div>
-                <div style={styles.brandSubtitle}>Pakistani legal assistance</div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => { window.location.href = '/lawyers'; }}
-              style={styles.lawyersButton}
-            >
-              <Icon name="scale" size={18} />
-              <span>Lawyers</span>
-            </button>
-
-            <div style={styles.searchBox}>
-              <Icon name="search" size={18} />
-              <input
-                value={historySearch}
-                onChange={e => setHistorySearch(e.target.value)}
-                placeholder="Search conversations"
-                style={styles.searchInput}
-              />
-            </div>
-
-
-
-            <button type="button" onClick={() => { handleNewChat(); setHistorySearch(''); }} style={styles.newChatButton}>
-              <span style={styles.newChatIcon}><Icon name="plus" size={17} /></span>
-              <span>New conversation</span>
-            </button>
-
-            <div id="chat-history" style={styles.historyHeader}>
-              <span>Recent conversations</span>
-              <span style={styles.historyCount}>{filteredHistory.length}</span>
-            </div>
-
-            <div style={styles.chatHistoryScrollArea}>
-              {filteredHistory.length === 0 ? (
-                <div style={styles.emptyHistory}>
-                  <div style={styles.emptyHistoryIcon}><Icon name="clock" size={23} /></div>
-                  <div style={styles.emptyHistoryTitle}>{historySearch ? 'No matches found' : 'No conversations yet'}</div>
-                  <div style={styles.emptyHistoryText}>{historySearch ? 'Try another search.' : 'Start a new legal conversation.'}</div>
-                </div>
-              ) : (
-                filteredHistory.map(chat => (
-                  <div
-                    key={chat.id}
-                    onClick={() => loadChatById(chat.id)}
-                    style={{ ...styles.historyItem, ...(activeChatId === chat.id ? styles.activeHistoryItem : {}) }}
-                  >
-                    <div style={styles.historyItemMain}>
-                      <div style={styles.historyItemIcon}><Icon name="library" size={16} /></div>
-                      <div style={styles.historyItemContent}>
-                        {editChatId === chat.id ? (
-                          <div style={styles.renameArea}>
-                            <input
-                              type="text"
-                              value={newTitle}
-                              onChange={e => setNewTitle(e.target.value)}
-                              onClick={e => e.stopPropagation()}
-                              autoFocus
-                              style={styles.renameInput}
-                            />
-                            <button type="button" onClick={e => { e.stopPropagation(); handleRenameChat(chat.id); }} style={styles.renameSaveButton}>Save</button>
-                          </div>
-                        ) : (
-                          <span style={styles.historyItemTitle}>{chat.title || chat.messages?.[0]?.text?.slice(0, 34) || 'New Chat'}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div
-                      style={styles.dropdownWrapper}
-                      ref={el => { dropdownRefs.current[chat.id] = el; }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenDropdownId(openDropdownId === chat.id ? null : chat.id)}
-                        style={{ ...styles.moreButton, ...(openDropdownId === chat.id ? styles.moreButtonActive : {}) }}
-                        aria-label="Conversation options"
-                      >
-                        <Icon name="more" size={17} />
-                      </button>
-
-                      {openDropdownId === chat.id && (
-                        <div style={styles.dropdown}>
-                          <button type="button" onClick={() => { setEditChatId(chat.id); setNewTitle(chat.title || ''); setOpenDropdownId(null); }} style={styles.dropdownButton}>
-                            <Icon name="edit" size={16} />
-                            <span>Edit conversation</span>
-                          </button>
-                          <button type="button" onClick={() => { handleDeleteChat(chat.id); setOpenDropdownId(null); }} style={{ ...styles.dropdownButton, ...styles.deleteDropdownButton }}>
-                            <Icon name="trash" size={16} />
-                            <span>Delete conversation</span>
-                          </button>
+            ) : (
+              filteredHistory.map(chat => (
+                <div
+                  key={chat.id}
+                  onClick={() => loadChatById(chat.id)}
+                  className={`sidebar-history-item ${activeChatId === chat.id ? 'active' : ''}`}
+                >
+                  <div className="sidebar-history-main">
+                    <div className="sidebar-history-icon"><Icon name="library" size={16} /></div>
+                    <div className="sidebar-history-content">
+                      {editChatId === chat.id ? (
+                        <div className="sidebar-rename-area">
+                          <input
+                            type="text"
+                            value={newTitle}
+                            onChange={e => setNewTitle(e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            autoFocus
+                            className="sidebar-rename-input"
+                          />
+                          <button type="button" onClick={e => { e.stopPropagation(); handleRenameChat(chat.id); }} className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>Save</button>
                         </div>
+                      ) : (
+                        <span className="sidebar-history-title">{chat.title || chat.messages?.[0]?.text?.slice(0, 34) || 'New Chat'}</span>
                       )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
 
-            <div style={styles.sidebarFooter}>
-              <div style={styles.accountMenuWrapper} ref={accountMenuRef}>
-                <div
-                  style={{
-                    ...styles.accountDropup,
-                    ...(isAccountMenuOpen ? styles.accountDropupOpen : styles.accountDropupClosed)
-                  }}
-                  aria-hidden={!isAccountMenuOpen}
-                >
-                  <div style={styles.accountDropupUser}>
-                    <div style={styles.accountIconLarge}><Icon name="user" size={21} /></div>
-                    <div style={styles.accountDropupIdentity}>
-                      <div style={styles.accountDropupName}>{displayName}</div>
-                      <div style={styles.accountDropupEmail}>{userEmail || 'No email available'}</div>
-                    </div>
-                  </div>
-
-                  <div style={styles.accountDivider}></div>
-
-                  <div style={styles.accountActions}>
-                    <button type="button" onClick={handleOpenProfile} style={styles.accountActionButton}>
-                      <Icon name="user" size={17} />
-                      <span>Profile</span>
+                  <div
+                    className="sidebar-dropdown-wrap"
+                    ref={el => { dropdownRefs.current[chat.id] = el; }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdownId(openDropdownId === chat.id ? null : chat.id)}
+                      className={`sidebar-more-btn ${openDropdownId === chat.id ? 'active' : ''}`}
+                      aria-label="Conversation options"
+                    >
+                      <Icon name="more" size={17} />
                     </button>
-                    <button type="button" onClick={handleOpenSettings} style={styles.accountActionButton}>
-                      <Icon name="settings" size={17} />
-                      <span>Settings</span>
-                    </button>
+
+                    {openDropdownId === chat.id && (
+                      <div className="sidebar-dropdown">
+                        <button type="button" onClick={() => { setEditChatId(chat.id); setNewTitle(chat.title || ''); setOpenDropdownId(null); }} className="sidebar-dropdown-btn">
+                          <Icon name="edit" size={16} />
+                          <span>Edit conversation</span>
+                        </button>
+                        <button type="button" onClick={() => { handleDeleteChat(chat.id); setOpenDropdownId(null); }} className="sidebar-dropdown-btn danger">
+                          <Icon name="trash" size={16} />
+                          <span>Delete conversation</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
+                </div>
+              ))
+            )}
+          </div>
 
-                  <div style={styles.accountDividerSmall}></div>
+          <div className="sidebar-footer">
+            <div className="account-menu-wrap" ref={accountMenuRef}>
+              <div
+                className={`account-dropup ${isAccountMenuOpen ? 'open' : ''}`}
+                aria-hidden={!isAccountMenuOpen}
+              >
+                <div className="account-dropup-user">
+                  <div className="account-icon-lg"><Icon name="user" size={21} /></div>
+                  <div className="account-dropup-identity">
+                    <div className="account-dropup-name">{displayName}</div>
+                    <div className="account-dropup-email">{userEmail || 'No email available'}</div>
+                  </div>
+                </div>
 
-                  <button type="button" onClick={handleLogout} className="account-logout-button" style={styles.accountLogoutButton}>
-                    <Icon name="logout" size={18} />
-                    <span>Log out</span>
+                <div className="account-divider"></div>
+
+                <div className="account-actions">
+                  <button type="button" onClick={handleOpenProfile} className="account-action-btn">
+                    <Icon name="user" size={17} />
+                    <span>Profile</span>
+                  </button>
+                  <button type="button" onClick={handleOpenSettings} className="account-action-btn">
+                    <Icon name="settings" size={17} />
+                    <span>Settings</span>
                   </button>
                 </div>
 
-                <button type="button" onClick={() => setIsAccountMenuOpen(prev => !prev)} style={styles.accountTrigger} aria-expanded={isAccountMenuOpen}>
-                  <div style={styles.accountIcon}><Icon name="user" size={19} /></div>
-                  <div style={styles.accountTriggerIdentity}>
-                    <div style={styles.accountTriggerName}>{displayName}</div>
-                    <div style={styles.accountTriggerEmail}>{userEmail || 'No email available'}</div>
-                  </div>
-                  <Icon name={isAccountMenuOpen ? 'chevronDown' : 'chevronUp'} size={18} />
+                <div className="account-divider sm"></div>
+
+                <button type="button" onClick={handleLogout} className="account-logout-btn">
+                  <Icon name="logout" size={18} />
+                  <span>Log out</span>
                 </button>
               </div>
-              <div style={styles.footerNote}>AI assistance for Pakistani law</div>
+
+              <button type="button" onClick={() => setIsAccountMenuOpen(prev => !prev)} className="account-trigger" aria-expanded={isAccountMenuOpen}>
+                <div className="account-icon"><Icon name="user" size={19} /></div>
+                <div className="account-trigger-identity">
+                  <div className="account-trigger-name">{displayName}</div>
+                  <div className="account-trigger-email">{userEmail || 'No email available'}</div>
+                </div>
+                <Icon name={isAccountMenuOpen ? 'chevronDown' : 'chevronUp'} size={18} />
+              </button>
             </div>
+            <div className="sidebar-footnote">AI assistance for Pakistani law</div>
           </div>
         </aside>
       )}
 
       {!isSidebarOpen && (
-        <button type="button" onClick={() => setIsSidebarOpen(true)} style={styles.mobileMenuButton} aria-label="Open navigation">
+        <button type="button" onClick={() => setIsSidebarOpen(true)} className="mobile-menu-btn" aria-label="Open navigation">
           <Icon name="menu" size={20} />
         </button>
       )}
 
       {activeAccountModal && (
         <div
-          style={styles.modalOverlay}
+          className="modal-overlay"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) handleCloseAccountModal();
           }}
@@ -1331,15 +1326,13 @@ const Chatbot = ({ onLogout }) => {
             role="dialog"
             aria-modal="true"
             aria-labelledby={activeAccountModal === 'profile' ? 'profile-modal-title' : 'settings-modal-title'}
-            style={{
-              ...styles.accountModal,
-              ...(activeAccountModal === 'profile' ? styles.profileModal : styles.settingsModal)
-            }}
+            className={`account-modal ${activeAccountModal === 'profile' ? 'profile' : 'settings'}`}
           >
             <button
               type="button"
               onClick={handleCloseAccountModal}
-              style={styles.modalCloseButton}
+              className="icon-btn"
+              style={{ position: 'absolute', top: '16px', right: '16px', width: '42px', height: '42px' }}
               aria-label="Close"
             >
               <Icon name="close" size={25} stroke={1.8} />
@@ -1347,57 +1340,49 @@ const Chatbot = ({ onLogout }) => {
 
             {activeAccountModal === 'profile' ? (
               <>
-                <h2 id="profile-modal-title" style={styles.modalTitle}>Edit profile</h2>
+                <h2 id="profile-modal-title" className="account-modal-title">Edit profile</h2>
 
-                <div style={styles.profileAvatarLarge}>
+                <div className="profile-avatar-lg">
                   {profileAvatarUrl ? (
-                    <img src={profileAvatarUrl} alt={displayName} style={styles.profileAvatarImage} />
+                    <img src={profileAvatarUrl} alt={displayName} />
                   ) : (
                     <Icon name="user" size={62} stroke={1.55} />
                   )}
                 </div>
 
-                <div style={styles.profileForm}>
-                  <label style={styles.profileField}>
-                    <span style={styles.profileFieldLabel}>Name</span>
-                    <input
-                      type="text"
-                      value={profileNameInput}
-                      onChange={event => setProfileNameInput(event.target.value)}
-                      style={styles.profileNameInput}
-                      autoComplete="name"
-                    />
-                  </label>
+                <div className="field-group" style={{ textAlign: 'left' }}>
+                  <label className="field-label">Name</label>
+                  <input
+                    type="text"
+                    value={profileNameInput}
+                    onChange={event => setProfileNameInput(event.target.value)}
+                    className="field-input"
+                    autoComplete="name"
+                  />
                 </div>
 
-                <div style={styles.modalFooter}>
-                  <button type="button" onClick={handleCloseAccountModal} style={styles.modalCancelButton}>
+                <div className="modal-footer">
+                  <button type="button" onClick={handleCloseAccountModal} className="btn btn-secondary">
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSaveProfile}
                     disabled={!profileNameInput.trim()}
-                    style={{
-                      ...styles.modalSaveButton,
-                      ...(!profileNameInput.trim() ? styles.modalSaveButtonDisabled : {})
-                    }}
+                    className="btn btn-primary"
                   >
                     Save
                   </button>
                 </div>
               </>
             ) : (
-              <div style={styles.settingsLayout}>
-                <div style={styles.settingsSidebar}>
-                  <div style={styles.settingsHeading}>Settings</div>
+              <div className="settings-layout">
+                <div className="settings-nav">
+                  <div className="settings-nav-heading">Settings</div>
                   <button
                     type="button"
                     onClick={() => setSettingsSection('account')}
-                    style={{
-                      ...styles.settingsNavButton,
-                      ...(settingsSection === 'account' ? styles.settingsNavButtonActive : {})
-                    }}
+                    className={`settings-nav-btn ${settingsSection === 'account' ? 'active' : ''}`}
                   >
                     <Icon name="user" size={18} />
                     <span>Account</span>
@@ -1405,10 +1390,7 @@ const Chatbot = ({ onLogout }) => {
                   <button
                     type="button"
                     onClick={() => setSettingsSection('security')}
-                    style={{
-                      ...styles.settingsNavButton,
-                      ...(settingsSection === 'security' ? styles.settingsNavButtonActive : {})
-                    }}
+                    className={`settings-nav-btn ${settingsSection === 'security' ? 'active' : ''}`}
                   >
                     <Icon name="shield" size={18} />
                     <span>Security</span>
@@ -1419,10 +1401,7 @@ const Chatbot = ({ onLogout }) => {
                       setSettingsSection('authentication');
                       setTwoFactorError('');
                     }}
-                    style={{
-                      ...styles.settingsNavButton,
-                      ...(settingsSection === 'authentication' ? styles.settingsNavButtonActive : {})
-                    }}
+                    className={`settings-nav-btn ${settingsSection === 'authentication' ? 'active' : ''}`}
                   >
                     <Icon name="shield" size={18} />
                     <span>Authentication</span>
@@ -1430,10 +1409,7 @@ const Chatbot = ({ onLogout }) => {
                   <button
                     type="button"
                     onClick={() => setSettingsSection('sessions')}
-                    style={{
-                      ...styles.settingsNavButton,
-                      ...(settingsSection === 'sessions' ? styles.settingsNavButtonActive : {})
-                    }}
+                    className={`settings-nav-btn ${settingsSection === 'sessions' ? 'active' : ''}`}
                   >
                     <Icon name="laptop" size={18} />
                     <span>Sessions</span>
@@ -1441,90 +1417,89 @@ const Chatbot = ({ onLogout }) => {
                   <button
                     type="button"
                     onClick={() => setSettingsSection('dataControls')}
-                    style={{
-                      ...styles.settingsNavButton,
-                      ...(settingsSection === 'dataControls' ? styles.settingsNavButtonActive : {})
-                    }}
+                    className={`settings-nav-btn ${settingsSection === 'dataControls' ? 'active' : ''}`}
                   >
                     <Icon name="library" size={18} />
                     <span>Data Controls</span>
                   </button>
                 </div>
 
-                <div style={styles.settingsContent}>
+                <div className="settings-content">
                   {settingsSection === 'account' && (
-                    <>
-                      <h2 id="settings-modal-title" style={styles.settingsContentTitle}>Account</h2>
-                      <div style={styles.settingsRows}>
-                        <div style={styles.settingsRow}>
-                          <span style={styles.settingsRowLabel}>Name</span>
-                          <span style={styles.settingsRowValue}>{displayName}</span>
+                    <div key="account" className="settings-panel">
+                      <div className="settings-section-icon"><Icon name="user" size={20} /></div>
+                      <h2 id="settings-modal-title" className="settings-content-title">Account</h2>
+                      <div>
+                        <div className="settings-row">
+                          <span className="settings-row-label">Name</span>
+                          <span className="settings-row-value">{displayName}</span>
                         </div>
-                        <div style={styles.settingsRow}>
-                          <span style={styles.settingsRowLabel}>Email</span>
-                          <span style={styles.settingsRowValue}>{userEmail || 'No email available'}</span>
+                        <div className="settings-row">
+                          <span className="settings-row-label">Email</span>
+                          <span className="settings-row-value">{userEmail || 'No email available'}</span>
                         </div>
-                        <div style={{ ...styles.settingsRow, ...styles.deleteAccountRow }}>
-                          <span style={styles.settingsRowLabel}>Delete account</span>
+                        <div className="settings-row delete">
+                          <span className="settings-row-label">Delete account</span>
                           <button
                             type="button"
                             onClick={() => setDeleteAccountConsentOpen(true)}
-                            style={styles.deleteAccountButton}
+                            className="btn btn-outline-danger"
                           >
                             Delete
                           </button>
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
 
                   {settingsSection === 'security' && (
-                    <div style={styles.securitySection}>
-                      <h2 id="settings-modal-title" style={styles.settingsContentTitle}>Security</h2>
-                      <div style={styles.securityCard}>
-                        <div style={styles.securityIntro}>
-                          <div style={styles.securityIntroTitle}>Change Password</div>
-                          <div style={styles.securityIntroText}>Update your password to keep your account secure.</div>
+                    <div key="security" className="settings-panel">
+                      <div className="settings-section-icon"><Icon name="shield" size={20} /></div>
+                      <h2 id="settings-modal-title" className="settings-content-title">Security</h2>
+                      <div style={{ width: '100%', maxWidth: '720px', paddingTop: '2px' }}>
+                        <div className="security-intro">
+                          <div className="security-intro-title">Change Password</div>
+                          <div className="security-intro-text">Update your password to keep your account secure.</div>
                         </div>
 
-                        <div style={styles.passwordFieldGroup}>
-                          <label style={styles.passwordFieldLabel}>Old Password</label>
-                          <div style={{ ...styles.passwordInputWrap, ...(passwordForm.oldPassword ? styles.passwordInputValid : {}) }}>
+                        <div className="pw-field">
+                          <label className="pw-field-label">Old Password</label>
+                          <div className={`pw-input-wrap ${passwordForm.oldPassword ? 'valid' : ''}`}>
                             <input
                               type={showOldPassword ? 'text' : 'password'}
                               value={passwordForm.oldPassword}
                               onChange={event => setPasswordForm(prev => ({ ...prev, oldPassword: event.target.value }))}
-                              style={styles.passwordInput}
+                              className="pw-input"
                               placeholder="Enter your old password"
                               autoComplete="current-password"
                             />
-                            <button type="button" onClick={() => setShowOldPassword(prev => !prev)} style={styles.passwordToggle} aria-label={showOldPassword ? 'Hide old password' : 'Show old password'}>
+                            <button type="button" onClick={() => setShowOldPassword(prev => !prev)} className="icon-btn" style={{ width: '38px', height: '38px' }} aria-label={showOldPassword ? 'Hide old password' : 'Show old password'}>
                               <Icon name={showOldPassword ? 'eyeOff' : 'eye'} size={20} />
                             </button>
-                            {passwordForm.oldPassword && <span style={styles.passwordValidMark}>✓</span>}
+                            {passwordForm.oldPassword && <span className="pw-valid-mark">✓</span>}
                           </div>
                         </div>
 
-                        <div style={styles.passwordFieldGroup}>
-                          <label style={styles.passwordFieldLabel}>New Password</label>
-                          <div style={{ ...styles.passwordInputWrap, ...(passwordForm.newPassword && !isNewPasswordValid ? styles.passwordInputInvalid : {}), ...(isNewPasswordValid ? styles.passwordInputValid : {}) }}>
+                        <div className="pw-field">
+                          <label className="pw-field-label">New Password</label>
+                          <div className={`pw-input-wrap ${passwordForm.newPassword && !isNewPasswordValid ? 'invalid' : ''} ${isNewPasswordValid ? 'valid' : ''}`}>
                             <input
                               type={showNewPassword ? 'text' : 'password'}
                               value={passwordForm.newPassword}
                               onChange={event => setPasswordForm(prev => ({ ...prev, newPassword: event.target.value }))}
-                              style={styles.passwordInput}
+                              className="pw-input"
                               placeholder="Enter your new password"
                               autoComplete="new-password"
                             />
-                            <button type="button" onClick={() => setShowNewPassword(prev => !prev)} style={styles.passwordToggle} aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}>
+                            <button type="button" onClick={() => setShowNewPassword(prev => !prev)} className="icon-btn" style={{ width: '38px', height: '38px' }} aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}>
                               <Icon name={showNewPassword ? 'eyeOff' : 'eye'} size={20} />
                             </button>
                           </div>
 
                           {passwordForm.newPassword && !isNewPasswordValid && (
-                            <div style={styles.passwordValidationError}>Please add all necessary characters to create a safe password.</div>
+                            <div className="pw-error-text">Please add all necessary characters to create a safe password.</div>
                           )}
-                          <div style={styles.passwordRules}>
+                          <div className="pw-rules">
                             {[
                               ['minLength', 'Minimum characters 12'],
                               ['uppercase', 'One uppercase character'],
@@ -1532,31 +1507,31 @@ const Chatbot = ({ onLogout }) => {
                               ['special', 'One special character'],
                               ['number', 'One number']
                             ].map(([key, label]) => (
-                              <div key={key} style={{ ...styles.passwordRule, ...(passwordRules[key] ? styles.passwordRuleValid : {}) }}>
-                                <span style={styles.passwordRuleDot}>{passwordRules[key] ? '✓' : '•'}</span>
+                              <div key={key} className={`pw-rule ${passwordRules[key] ? 'valid' : ''}`}>
+                                <span className="pw-rule-dot">{passwordRules[key] ? '✓' : '•'}</span>
                                 <span>{label}</span>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        <div style={styles.passwordFieldGroup}>
-                          <label style={styles.passwordFieldLabel}>Confirm New Password</label>
-                          <div style={{ ...styles.passwordInputWrap, ...(passwordForm.confirmPassword && !passwordsMatch ? styles.passwordInputInvalid : {}), ...(passwordsMatch ? styles.passwordInputValid : {}) }}>
+                        <div className="pw-field">
+                          <label className="pw-field-label">Confirm New Password</label>
+                          <div className={`pw-input-wrap ${passwordForm.confirmPassword && !passwordsMatch ? 'invalid' : ''} ${passwordsMatch ? 'valid' : ''}`}>
                             <input
                               type={showConfirmPassword ? 'text' : 'password'}
                               value={passwordForm.confirmPassword}
                               onChange={event => setPasswordForm(prev => ({ ...prev, confirmPassword: event.target.value }))}
-                              style={styles.passwordInput}
+                              className="pw-input"
                               placeholder="Enter your confirm new password"
                               autoComplete="new-password"
                             />
-                            <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} style={styles.passwordToggle} aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}>
+                            <button type="button" onClick={() => setShowConfirmPassword(prev => !prev)} className="icon-btn" style={{ width: '38px', height: '38px' }} aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}>
                               <Icon name={showConfirmPassword ? 'eyeOff' : 'eye'} size={20} />
                             </button>
                           </div>
                           {passwordForm.confirmPassword && !passwordsMatch && (
-                            <div style={styles.passwordValidationError}>Passwords do not match.</div>
+                            <div className="pw-error-text">Passwords do not match.</div>
                           )}
                         </div>
 
@@ -1564,10 +1539,8 @@ const Chatbot = ({ onLogout }) => {
                           type="button"
                           onClick={handleChangePassword}
                           disabled={!canChangePassword}
-                          style={{
-                            ...styles.changePasswordButton,
-                            ...(!canChangePassword ? styles.changePasswordButtonDisabled : {})
-                          }}
+                          className="btn btn-primary btn-lg"
+                          style={{ width: '100%' }}
                         >
                           {isChangingPassword ? 'Changing Password…' : 'Change Password'}
                         </button>
@@ -1576,14 +1549,15 @@ const Chatbot = ({ onLogout }) => {
                   )}
 
                   {settingsSection === 'authentication' && (
-                    <div style={styles.authenticationSection}>
-                      <h2 id="settings-modal-title" style={styles.settingsContentTitle}>Authentication</h2>
+                    <div key="authentication" className="settings-panel" style={{ width: '100%', maxWidth: '760px' }}>
+                      <div className="settings-section-icon"><Icon name="shield" size={20} /></div>
+                      <h2 id="settings-modal-title" className="settings-content-title">Authentication</h2>
 
-                      <div style={styles.authenticationCard}>
-                        <div style={styles.authenticationRow}>
-                          <div style={styles.authenticationCopy}>
-                            <div style={styles.authenticationTitle}>Authenticator app</div>
-                            <div style={styles.authenticationDescription}>
+                      <div className="twofa-block">
+                        <div className="twofa-row">
+                          <div className="twofa-copy">
+                            <div className="twofa-title">Authenticator app</div>
+                            <div className="twofa-desc">
                               Use one-time codes from an authenticator app.
                             </div>
                           </div>
@@ -1595,37 +1569,28 @@ const Chatbot = ({ onLogout }) => {
                             aria-label="Authenticator app"
                             onClick={handleTwoFactorToggle}
                             disabled={isLoadingTwoFactor || isSettingUpTwoFactor || isEnrollingTwoFactor}
-                            style={{
-                              ...styles.twoFactorToggle,
-                              ...((isTwoFactorEnabled || isSettingUpTwoFactor) ? styles.twoFactorToggleOn : {}),
-                              ...(isLoadingTwoFactor ? styles.twoFactorToggleDisabled : {})
-                            }}
+                            className={`switch ${(isTwoFactorEnabled || isSettingUpTwoFactor) ? 'on' : ''}`}
                           >
-                            <span
-                              style={{
-                                ...styles.twoFactorToggleKnob,
-                                ...(isTwoFactorEnabled ? styles.twoFactorToggleKnobOn : {})
-                              }}
-                            />
+                            <span className="switch-knob" />
                           </button>
                         </div>
 
                         {isSettingUpTwoFactor && (
-                          <div style={styles.twoFactorSetup}>
-                            <div style={styles.twoFactorSetupStep}>
-                              <div style={styles.twoFactorStepTitle}>Step 1:</div>
-                              <div style={styles.twoFactorStepText}>
+                          <div className="twofa-setup">
+                            <div className="twofa-step">
+                              <div className="twofa-step-label">Step 1:</div>
+                              <div>
                                 Scan the QR code using your authenticator app, then enter the 6-digit code from the app.
                               </div>
                             </div>
 
-                            <div style={styles.twoFactorQrCard}>
-                              <div ref={qrCodeRef} style={styles.twoFactorQrCode} aria-label="Authenticator app QR code" />
+                            <div className="twofa-qr-card">
+                              <div ref={qrCodeRef} className="twofa-qr-code" aria-label="Authenticator app QR code" />
                             </div>
 
-                            <div style={styles.twoFactorSetupStepSecond}>
-                              <div style={styles.twoFactorStepTitle}>Step 2:</div>
-                              <div style={styles.twoFactorStepText}>Enter your 6-digit code</div>
+                            <div className="twofa-step second">
+                              <div className="twofa-step-label">Step 2:</div>
+                              <div>Enter your 6-digit code</div>
                             </div>
 
                             <input
@@ -1643,19 +1608,19 @@ const Chatbot = ({ onLogout }) => {
                                 if (event.key === 'Enter') handleVerifyTwoFactor();
                               }}
                               placeholder="Enter your 6-digit code"
-                              style={styles.twoFactorCodeInput}
+                              className="field-input mfa-input"
                               aria-label="Enter your 6-digit code"
                             />
 
                             {twoFactorError && (
-                              <div style={styles.twoFactorError}>{twoFactorError}</div>
+                              <div className="twofa-error">{twoFactorError}</div>
                             )}
 
-                            <div style={styles.twoFactorSetupFooter}>
+                            <div className="twofa-footer">
                               <button
                                 type="button"
                                 onClick={handleCancelTwoFactorSetup}
-                                style={styles.twoFactorCancelButton}
+                                className="btn btn-secondary"
                                 disabled={isEnrollingTwoFactor}
                               >
                                 Cancel
@@ -1664,12 +1629,7 @@ const Chatbot = ({ onLogout }) => {
                                 type="button"
                                 onClick={handleVerifyTwoFactor}
                                 disabled={!/^\d{6}$/.test(twoFactorVerificationCode) || isEnrollingTwoFactor}
-                                style={{
-                                  ...styles.twoFactorVerifyButton,
-                                  ...((!/^\d{6}$/.test(twoFactorVerificationCode) || isEnrollingTwoFactor)
-                                    ? styles.twoFactorVerifyButtonDisabled
-                                    : {})
-                                }}
+                                className="btn btn-primary"
                               >
                                 {isEnrollingTwoFactor ? 'Verifying…' : 'Verify'}
                               </button>
@@ -1678,53 +1638,50 @@ const Chatbot = ({ onLogout }) => {
                         )}
 
                         {twoFactorError && !isSettingUpTwoFactor && (
-                          <div style={styles.twoFactorError}>{twoFactorError}</div>
+                          <div className="twofa-error">{twoFactorError}</div>
                         )}
                       </div>
                     </div>
                   )}
 
                   {settingsSection === 'sessions' && (
-                    <div style={styles.securitySection}>
-                      <h2 id="settings-modal-title" style={styles.settingsContentTitle}>Active sessions</h2>
-                      <div style={styles.sessionsDescription}>
+                    <div key="sessions" className="settings-panel">
+                      <h2 id="settings-modal-title" className="settings-content-title">Active sessions</h2>
+                      <div className="sessions-desc">
                         Review recent sessions and trusted devices associated with your account.
                       </div>
 
-                      <div style={styles.sessionsList}>
+                      <div className="sessions-list">
                         {isLoadingSessions && sessions.length === 0 ? (
-                          <div style={styles.sessionsEmpty}>Loading sessions…</div>
+                          <div className="sessions-empty">Loading sessions…</div>
                         ) : sessions.length === 0 ? (
-                          <div style={styles.sessionsEmpty}>No session activity available.</div>
+                          <div className="sessions-empty">No session activity available.</div>
                         ) : (
                           sessions.map(session => {
                             const isCurrent = session.id === sessionIdRef.current;
                             const sessionLocation = [session.city, session.region].filter(Boolean).join(', ');
                             return (
-                              <div key={session.id} style={styles.sessionRow}>
-                                <div style={styles.sessionIcon}>
+                              <div key={session.id} className="session-row">
+                                <div className="session-icon">
                                   <Icon name={session.icon === 'mobile' ? 'mobile' : 'laptop'} size={31} stroke={1.8} />
                                 </div>
 
-                                <div style={styles.sessionInfo}>
-                                  <div style={styles.sessionName}>AI Legal Counsellor Web</div>
-                                  <div style={styles.sessionMeta}>{session.device || 'Device'} · {session.os || 'Unknown OS'}</div>
-                                  <div style={styles.sessionMeta}>{formatSessionDate(session.createdAt)}</div>
-                                  <div style={styles.sessionMeta}>{sessionLocation || 'Location unavailable'}</div>
+                                <div className="session-info">
+                                  <div className="session-name">AI Legal Counsellor Web</div>
+                                  <div className="session-meta">{session.device || 'Device'} · {session.os || 'Unknown OS'}</div>
+                                  <div className="session-meta">{formatSessionDate(session.createdAt)}</div>
+                                  <div className="session-meta">{sessionLocation || 'Location unavailable'}</div>
                                 </div>
 
-                                <div style={styles.sessionAction}>
+                                <div className="session-action">
                                   {isCurrent ? (
-                                    <span style={styles.currentSessionBadge}>CURRENT SESSION</span>
+                                    <span className="session-badge">CURRENT SESSION</span>
                                   ) : (
                                     <button
                                       type="button"
                                       onClick={() => handleRevokeSession(session)}
                                       disabled={revokingSessionId === session.id}
-                                      style={{
-                                        ...styles.sessionLogoutButton,
-                                        ...(revokingSessionId === session.id ? styles.sessionLogoutButtonDisabled : {})
-                                      }}
+                                      className="btn btn-secondary"
                                     >
                                       {revokingSessionId === session.id ? 'Logging out…' : 'Log out'}
                                     </button>
@@ -1739,17 +1696,17 @@ const Chatbot = ({ onLogout }) => {
                   )}
 
                   {settingsSection === 'dataControls' && (
-                    <div style={styles.dataControlsSection}>
-                      <h2 style={styles.settingsContentTitle}>Data Controls</h2>
-                      <div style={styles.dataControlsDescription}>
+                    <div key="dataControls" className="settings-panel data-controls-section" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+                      <h2 className="settings-content-title">Data Controls</h2>
+                      <div className="data-controls-desc">
                         Manage the conversations saved to your account.
                       </div>
 
-                      <div style={styles.dataControlsList}>
-                        <div style={styles.dataControlRow}>
-                          <div style={styles.dataControlCopy}>
-                            <div style={styles.dataControlTitle}>Export chats</div>
-                            <div style={styles.dataControlDescription}>Download a copy of your saved conversations.</div>
+                      <div className="data-controls-list">
+                        <div className="data-control-row">
+                          <div className="data-control-copy">
+                            <div className="data-control-title">Export chats</div>
+                            <div className="data-control-desc">Download a copy of your saved conversations.</div>
                           </div>
                           <button
                             type="button"
@@ -1808,21 +1765,21 @@ const Chatbot = ({ onLogout }) => {
                                 });
                               }
                             }}
-                            style={styles.dataControlSecondaryButton}
+                            className="btn btn-secondary"
                           >
                             Export
                           </button>
                         </div>
 
-                        <div style={styles.dataControlRow}>
-                          <div style={styles.dataControlCopy}>
-                            <div style={styles.dataControlTitle}>Delete all chats</div>
-                            <div style={styles.dataControlDescription}>Permanently delete all saved conversations from your account.</div>
+                        <div className="data-control-row">
+                          <div className="data-control-copy">
+                            <div className="data-control-title">Delete all chats</div>
+                            <div className="data-control-desc">Permanently delete all saved conversations from your account.</div>
                           </div>
                           <button
                             type="button"
                             onClick={() => setDeleteChatsConsentOpen(true)}
-                            style={styles.dataControlDeleteButton}
+                            className="btn btn-outline-danger"
                           >
                             Delete
                           </button>
@@ -1879,59 +1836,59 @@ const Chatbot = ({ onLogout }) => {
         onClose={() => setToast(prev => ({ ...prev, open: false }))}
       />
 
-      <main style={styles.main}>
-        <header style={styles.topbar}>
-          <div style={styles.topbarNotice}>
+      <main className="chat-main">
+        <header className="chat-topbar">
+          <div className="chat-topbar-notice">
             Legal Counsellor can make mistakes, please double-check important information
           </div>
         </header>
 
-        <section style={styles.chatViewport}>
+        <section className="chat-viewport">
           {isWelcome && (
-            <div style={styles.welcomeArea}>
-              <div style={styles.welcomeMark} aria-label="Legal assistance">
+            <div className="welcome-area">
+              <div className="welcome-mark" aria-label="Legal assistance">
                 <Icon name="scale" size={42} stroke={1.55} />
               </div>
-              <div style={styles.welcomeEyebrow}>AI-POWERED LEGAL ASSISTANCE</div>
-              <h1 style={styles.welcomeTitle}>
+              <div className="welcome-eyebrow">AI-POWERED LEGAL ASSISTANCE</div>
+              <h1 className="welcome-title">
                 How can we help<br />with your legal question?
               </h1>
-              <p style={styles.welcomeText}>
+              <p className="welcome-text">
                 Ask questions about Pakistani law and receive AI-assisted guidance based on relevant legal frameworks.
               </p>
-              <div style={styles.disclaimer}>
-                <span style={styles.disclaimerIcon}><Icon name="info" size={17} /></span>
+              <div className="welcome-disclaimer">
+                <span className="welcome-disclaimer-icon"><Icon name="info" size={17} /></span>
                 <span>
                   For informational purposes only. For specific legal matters,{' '}
-                  <a href="/lawyers" style={styles.disclaimerLink}>Consult a Qualified Lawyer</a>.
+                  <a href="/lawyers">Consult a Qualified Lawyer</a>.
                 </span>
               </div>
             </div>
           )}
 
           {!isWelcome && (
-            <div style={styles.messagesContainer}>
+            <div className="messages-container">
               {messages.map((msg, index) => (
-                <div key={index} style={{ ...styles.messageRow, justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div key={index} className="message-row" style={{ justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
                   {msg.sender === 'bot' && (
-                    <div style={styles.messageAvatar}>
-                      <img src={headerLogoSrc} alt="AI" style={styles.messageAvatarImage} />
+                    <div className="message-avatar">
+                      <img src={headerLogoSrc} alt="AI" />
                     </div>
                   )}
-                  <div style={{ ...styles.message, ...(msg.sender === 'user' ? styles.userMessage : styles.botMessage) }}>
+                  <div className={`message-bubble ${msg.sender === 'user' ? 'user' : 'bot'}`}>
                     {msg.sender === 'bot' ? <ReactMarkdown>{msg.text}</ReactMarkdown> : msg.text}
                   </div>
                 </div>
               ))}
 
               {typingMessage && (
-                <div style={styles.messageRow}>
-                  <div style={styles.messageAvatar}>
-                    <img src={headerLogoSrc} alt="AI" style={styles.messageAvatarImage} />
+                <div className="message-row">
+                  <div className="message-avatar">
+                    <img src={headerLogoSrc} alt="AI" />
                   </div>
-                  <div style={{ ...styles.message, ...styles.botMessage }}>
+                  <div className="message-bubble bot">
                     <ReactMarkdown>{typingMessage}</ReactMarkdown>
-                    <span style={styles.typingCursor}></span>
+                    <span className="typing-cursor"></span>
                   </div>
                 </div>
               )}
@@ -1939,17 +1896,17 @@ const Chatbot = ({ onLogout }) => {
           )}
         </section>
 
-        <section style={styles.composerArea}>
-          <div style={styles.composerCard}>
-            <div style={styles.composerHint}>
+        <section className="composer-area">
+          <div className="composer-card">
+            <div className="composer-hint">
               <Icon name="spark" size={18} />
               <span>Ask a question about Pakistani law...</span>
             </div>
 
-            <div style={styles.composerInputRow}>
+            <div className="composer-input-row">
               <input
                 ref={inputRef}
-                style={styles.input}
+                className="composer-input"
                 type="text"
                 placeholder="Describe your legal question..."
                 value={input}
@@ -1958,7 +1915,7 @@ const Chatbot = ({ onLogout }) => {
               />
               <button
                 type="button"
-                style={{ ...styles.sendButton, ...(input.trim() ? styles.sendButtonActive : styles.sendButtonDisabled) }}
+                className={`composer-send-btn ${input.trim() ? 'active' : 'disabled'}`}
                 onClick={handleSend}
                 disabled={!input.trim()}
                 aria-label="Send message"
@@ -1967,10 +1924,10 @@ const Chatbot = ({ onLogout }) => {
               </button>
             </div>
 
-            <div style={styles.composerFooter}>
-              <div style={styles.composerChip}><Icon name="scale" size={15} /> Pakistani law</div>
-              <div style={styles.composerChip}><Icon name="library" size={15} /> Legal guidance</div>
-              <span style={styles.composerDisclaimer}>AI responses may not constitute legal advice.</span>
+            <div className="composer-footer">
+              <div className="composer-chip"><Icon name="scale" size={15} /> Pakistani law</div>
+              <div className="composer-chip"><Icon name="library" size={15} /> Legal guidance</div>
+              <span className="composer-disclaimer">AI responses may not constitute legal advice.</span>
             </div>
           </div>
         </section>
@@ -1978,1850 +1935,5 @@ const Chatbot = ({ onLogout }) => {
     </div>
   );
 };
-
-const colors = {
-  navy: '#0B172A',
-  navySoft: '#15243A',
-  gold: '#B8924A',
-  goldLight: '#D0AE6B',
-  page: '#F5F7FA',
-  surface: '#FFFFFF',
-  border: '#E7E9ED',
-  text: '#172033',
-  muted: '#7A808A',
-  sidebarText: '#69717D',
-  soft: '#F2F4F7'
-};
-
-const styles = {
-  appShell: {
-    display: 'flex',
-    width: '100%',
-    height: '100vh',
-    overflow: 'hidden',
-    background: colors.page,
-    color: colors.text,
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif"
-  },
-
-  sidebar: {
-    width: '300px',
-    minWidth: '300px',
-    height: '100vh',
-    padding: '24px 18px 16px',
-    boxSizing: 'border-box',
-    background: '#FBFCFD',
-    borderRight: `1px solid ${colors.border}`,
-    boxShadow: '3px 0 12px rgba(20,28,40,0.045)',
-    position: 'relative',
-    zIndex: 20
-  },
-
-  sidebarInner: {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-
-  brandRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '4px 8px 20px'
-  },
-
-  brandLogoBox: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '50%',
-    background: colors.navy,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0
-  },
-
-  brandLogo: {
-    width: '31px',
-    height: '31px',
-    objectFit: 'contain'
-  },
-
-  brandCopy: { minWidth: 0 },
-
-  brandTitle: {
-    fontSize: '14px',
-    lineHeight: 1.1,
-    fontWeight: '700',
-    color: colors.navy,
-    letterSpacing: '-0.2px'
-  },
-
-  brandSubtitle: {
-    marginTop: '3px',
-    fontSize: '12px',
-    lineHeight: 1.2,
-    color: colors.muted
-  },
-
-  searchBox: {
-    height: '48px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '9px',
-    padding: '0 13px',
-    margin: '0 4px 17px',
-    background: '#FFFFFF',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '999px',
-    color: '#9AA0A8',
-    boxShadow: '0 4px 16px rgba(25,35,50,0.045)'
-  },
-
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    border: 'none',
-    outline: 'none',
-    background: 'transparent',
-    color: colors.text,
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px'
-  },
-
-  navList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    padding: '0 4px',
-    marginBottom: '16px'
-  },
-
-  navItem: {
-    width: '100%',
-    minHeight: '44px',
-    border: 'none',
-    borderRadius: '999px',
-    background: 'transparent',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '0 12px',
-    color: colors.sidebarText,
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    fontWeight: '500',
-    textAlign: 'left',
-    cursor: 'pointer'
-  },
-
-  navItemActive: {
-    background: '#F0F2F5',
-    color: colors.text,
-    fontWeight: '600'
-  },
-
-  newChatButton: {
-    width: '100%',
-    minHeight: '48px',
-    borderRadius: '999px',
-    border: `1px solid ${colors.border}`,
-    background: '#FFFFFF',
-    color: colors.text,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '9px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    boxShadow: '0 3px 12px rgba(25,35,50,0.04)',
-    marginBottom: '10px'
-  },
-
-  newChatIcon: {
-    width: '25px',
-    height: '25px',
-    borderRadius: '8px',
-    background: '#F1F3F6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: colors.navy
-  },
-
-  lawyersButton: {
-    width: 'calc(100% - 8px)',
-    minHeight: '46px',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '16px',
-    background: '#FFFFFF',
-    color: colors.sidebarText,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '0 14px',
-    margin: '0 4px 17px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    fontWeight: '600',
-    textAlign: 'left',
-    cursor: 'pointer',
-    boxShadow: '0 3px 12px rgba(25,35,50,0.04)'
-  },
-
-  historyHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 10px 9px',
-    color: '#8B929C',
-    fontSize: '13px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '1px'
-  },
-
-  historyCount: {
-    minWidth: '22px',
-    height: '22px',
-    padding: '0 6px',
-    borderRadius: '999px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#EEF0F3',
-    color: '#8B929C',
-    fontSize: '12px'
-  },
-
-  chatHistoryScrollArea: {
-    flex: 1,
-    minHeight: 0,
-    overflowY: 'auto',
-    padding: '0 3px'
-  },
-
-  emptyHistory: {
-    padding: '45px 15px',
-    textAlign: 'center',
-    color: colors.muted
-  },
-
-  emptyHistoryIcon: {
-    width: '48px',
-    height: '48px',
-    margin: '0 auto 13px',
-    borderRadius: '15px',
-    background: '#F1F3F6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#A0A6AE'
-  },
-
-  emptyHistoryTitle: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#707781',
-    marginBottom: '3px'
-  },
-
-  emptyHistoryText: {
-    fontSize: '14px',
-    lineHeight: 1.45,
-    color: '#9AA0A8'
-  },
-
-  historyItem: {
-    minHeight: '49px',
-    padding: '7px 8px',
-    marginBottom: '3px',
-    borderRadius: '999px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    cursor: 'pointer',
-    color: '#727983',
-    position: 'relative'
-  },
-
-  activeHistoryItem: {
-    background: '#F0F2F5',
-    color: colors.text
-  },
-
-  historyItemMain: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    minWidth: 0,
-    flex: 1
-  },
-
-  historyItemIcon: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '999px',
-    background: '#F1F3F6',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#89919B',
-    flexShrink: 0
-  },
-
-  historyItemContent: {
-    minWidth: 0,
-    flex: 1
-  },
-
-  historyItemTitle: {
-    display: 'block',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    fontSize: '13px',
-    lineHeight: 1.25,
-    fontWeight: '500'
-  },
-
-  dropdownWrapper: {
-    position: 'relative',
-    flexShrink: 0
-  },
-
-  moreButton: {
-    width: '32px',
-    height: '32px',
-    border: 'none',
-    borderRadius: '8px',
-    background: 'transparent',
-    color: '#9AA0A8',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer'
-  },
-
-  moreButtonActive: {
-    background: '#E7EAF0',
-    color: colors.text
-  },
-
-  dropdown: {
-    position: 'absolute',
-    top: '35px',
-    right: 0,
-    width: '195px',
-    padding: '6px',
-    background: '#FFFFFF',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '999px',
-    boxShadow: '0 18px 45px rgba(20,28,40,0.14)',
-    zIndex: 100
-  },
-
-  dropdownButton: {
-    width: '100%',
-    minHeight: '39px',
-    border: 'none',
-    borderRadius: '8px',
-    background: 'transparent',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '0 10px',
-    color: colors.text,
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    textAlign: 'left',
-    cursor: 'pointer'
-  },
-
-  deleteDropdownButton: { color: '#A34343' },
-
-  renameArea: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px',
-    width: '100%'
-  },
-
-  renameInput: {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '7px 8px',
-    borderRadius: '999px',
-    border: `1px solid ${colors.border}`,
-    background: '#FFFFFF',
-    color: colors.text,
-    outline: 'none',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px'
-  },
-
-  renameSaveButton: {
-    alignSelf: 'flex-start',
-    padding: '5px 10px',
-    border: 'none',
-    borderRadius: '999px',
-    background: colors.navy,
-    color: '#FFFFFF',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  sidebarFooter: {
-    marginTop: '10px',
-    paddingTop: '10px',
-    borderTop: `1px solid ${colors.border}`,
-    position: 'relative'
-  },
-
-  accountMenuWrapper: { position: 'relative' },
-
-  accountTrigger: {
-    width: '100%',
-    minHeight: '66px',
-    border: 'none',
-    borderRadius: '999px',
-    background: 'transparent',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '11px',
-    padding: '8px 8px',
-    color: colors.text,
-    textAlign: 'left',
-    cursor: 'pointer'
-  },
-
-  accountIcon: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '50%',
-    border: '1px solid #D7DAE0',
-    background: '#F3F5F7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#5F6772',
-    flexShrink: 0
-  },
-
-  accountTriggerIdentity: { minWidth: 0, flex: 1 },
-
-  accountTriggerName: {
-    fontSize: '14px',
-    lineHeight: 1.15,
-    fontWeight: '600',
-    color: colors.text,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-
-  accountTriggerEmail: {
-    marginTop: '3px',
-    fontSize: '12px',
-    lineHeight: 1.2,
-    color: '#8A9098',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-
-  accountDropup: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: '68px',
-    padding: '16px',
-    background: '#FFFFFF',
-    border: `1px solid #E4E7EC`,
-    borderRadius: '24px',
-    boxShadow: '0 18px 45px rgba(20,28,40,0.13)',
-    zIndex: 120,
-    opacity: 0,
-    transform: 'translateY(12px) scale(0.985)',
-    transformOrigin: 'bottom center',
-    visibility: 'hidden',
-    pointerEvents: 'none',
-    transition: 'opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 260ms'
-  },
-
-  accountDropupOpen: {
-    opacity: 1,
-    transform: 'translateY(0) scale(1)',
-    visibility: 'visible',
-    pointerEvents: 'auto',
-    transition: 'opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s'
-  },
-
-  accountDropupClosed: {
-    opacity: 0,
-    transform: 'translateY(12px) scale(0.985)',
-    visibility: 'hidden',
-    pointerEvents: 'none'
-  },
-
-  accountDropupUser: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '2px 2px 4px'
-  },
-
-  accountIconLarge: {
-    width: '54px',
-    height: '54px',
-    borderRadius: '50%',
-    border: '1px solid #D7DAE0',
-    background: '#F3F5F7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#5F6772',
-    flexShrink: 0
-  },
-
-  accountDropupIdentity: { minWidth: 0, flex: 1 },
-
-  accountDropupName: {
-    fontSize: '16px',
-    lineHeight: 1.2,
-    fontWeight: '600',
-    color: colors.text,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-
-  accountDropupEmail: {
-    marginTop: '4px',
-    fontSize: '13px',
-    lineHeight: 1.2,
-    color: colors.muted,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-
-  accountDivider: {
-    height: '1px',
-    background: '#E4E7EC',
-    margin: '14px 2px 8px'
-  },
-
-  accountActions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px'
-  },
-
-  accountActionButton: {
-    width: '100%',
-    minHeight: '40px',
-    border: 'none',
-    borderRadius: '12px',
-    background: 'transparent',
-    color: '#454C56',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '11px',
-    padding: '0 10px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'background 160ms ease, color 160ms ease'
-  },
-
-  accountDividerSmall: {
-    height: '1px',
-    background: '#E4E7EC',
-    margin: '6px 2px 5px'
-  },
-
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 500,
-    background: 'rgba(11,23,42,0.18)',
-    backdropFilter: 'blur(3px)',
-    WebkitBackdropFilter: 'blur(3px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '22px',
-    animation: 'accountModalOverlayIn 220ms cubic-bezier(0.22, 1, 0.36, 1)'
-  },
-
-  accountModal: {
-    width: '100%',
-    maxHeight: 'calc(100vh - 44px)',
-    overflow: 'auto',
-    position: 'relative',
-    background: '#FFFFFF',
-    border: `1px solid #DCE0E6`,
-    borderRadius: '18px',
-    boxShadow: '0 28px 80px rgba(11,23,42,0.18)',
-    animation: 'accountModalIn 280ms cubic-bezier(0.22, 1, 0.36, 1)'
-  },
-
-  profileModal: {
-    maxWidth: '560px',
-    padding: '30px'
-  },
-
-  settingsModal: {
-    maxWidth: '900px',
-    minHeight: '520px',
-    padding: '28px',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'stretch',
-    alignItems: 'stretch'
-  },
-
-  modalCloseButton: {
-    position: 'absolute',
-    top: '16px',
-    right: '16px',
-    width: '42px',
-    height: '42px',
-    border: 'none',
-    borderRadius: '50%',
-    background: 'transparent',
-    color: '#111827',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer'
-  },
-
-  modalTitle: {
-    margin: '0',
-    color: '#111827',
-    fontSize: '30px',
-    lineHeight: 1.15,
-    fontWeight: '500'
-  },
-
-  profileAvatarLarge: {
-    width: '170px',
-    height: '170px',
-    margin: '42px auto 30px',
-    borderRadius: '50%',
-    background: '#F3F5F7',
-    border: '1px solid #D7DAE0',
-    color: '#69717C',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-
-  profileAvatarImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover'
-  },
-
-  profileForm: {
-    width: '100%'
-  },
-
-  profileField: {
-    display: 'block',
-    width: '100%',
-    border: '1px solid #D7DAE0',
-    borderRadius: '15px',
-    padding: '13px 18px 10px',
-    background: '#FFFFFF'
-  },
-
-  profileFieldLabel: {
-    display: 'block',
-    color: '#4E5661',
-    fontSize: '13px',
-    lineHeight: 1.2,
-    marginBottom: '4px'
-  },
-
-  profileNameInput: {
-    width: '100%',
-    border: 'none',
-    outline: 'none',
-    padding: 0,
-    background: 'transparent',
-    color: '#111827',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '18px',
-    lineHeight: 1.35
-  },
-
-  modalFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-    marginTop: '24px'
-  },
-
-  modalCancelButton: {
-    minWidth: '104px',
-    height: '44px',
-    padding: '0 18px',
-    border: '1px solid #D7DAE0',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#111827',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  modalSaveButton: {
-    minWidth: '88px',
-    height: '44px',
-    padding: '0 20px',
-    border: 'none',
-    borderRadius: '999px',
-    background: '#111111',
-    color: '#FFFFFF',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  modalSaveButtonDisabled: {
-    opacity: 0.45,
-    cursor: 'not-allowed'
-  },
-
-  dataControlsSection: {
-    width: '100%',
-    maxWidth: '760px',
-    marginTop: '36px',
-    paddingTop: '30px',
-    borderTop: '1px solid #E4E7EC'
-  },
-
-  dataControlsDescription: {
-    color: '#8A9098',
-    fontSize: '15px',
-    lineHeight: 1.5,
-    marginBottom: '22px'
-  },
-
-  dataControlsList: {
-    width: '100%',
-    borderTop: '1px solid #E4E7EC'
-  },
-
-  dataControlRow: {
-    minHeight: '86px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '24px',
-    borderBottom: '1px solid #E4E7EC',
-    padding: '12px 0'
-  },
-
-  dataControlCopy: {
-    minWidth: 0,
-    flex: 1
-  },
-
-  dataControlTitle: {
-    color: '#172033',
-    fontSize: '17px',
-    lineHeight: 1.25,
-    fontWeight: '600'
-  },
-
-  dataControlDescription: {
-    marginTop: '4px',
-    color: '#8A9098',
-    fontSize: '14px',
-    lineHeight: 1.45
-  },
-
-  dataControlSecondaryButton: {
-    minWidth: '104px',
-    height: '42px',
-    padding: '0 18px',
-    border: '1.5px solid #D7DAE0',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#111827',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    flexShrink: 0
-  },
-
-  dataControlDeleteButton: {
-    minWidth: '104px',
-    height: '42px',
-    padding: '0 18px',
-    border: '1.5px solid #D92D20',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#D92D20',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    flexShrink: 0
-  },
-
-  settingsLayout: {
-    display: 'flex',
-    minHeight: '464px',
-    paddingTop: '8px'
-  },
-
-  settingsSidebar: {
-    width: '190px',
-    flexShrink: 0,
-    padding: '38px 16px 10px 4px',
-    borderRight: '1px solid #E4E7EC'
-  },
-
-  settingsHeading: {
-    color: '#111827',
-    fontSize: '28px',
-    lineHeight: 1.15,
-    fontWeight: '500',
-    marginBottom: '26px',
-    padding: '0 10px'
-  },
-
-  settingsNavButton: {
-    width: '100%',
-    minHeight: '44px',
-    border: 'none',
-    borderRadius: '12px',
-    background: 'transparent',
-    color: '#69717C',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '0 12px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px',
-    fontWeight: '600',
-    textAlign: 'left',
-    cursor: 'pointer'
-  },
-
-  settingsNavButtonActive: {
-    background: '#F0F2F5',
-    color: '#172033'
-  },
-
-  authenticationSection: {
-    width: '100%',
-    maxWidth: '760px'
-  },
-
-  authenticationCard: {
-    width: '100%',
-    borderTop: '1px solid #E4E7EC'
-  },
-
-  authenticationRow: {
-    minHeight: '92px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '24px',
-    borderBottom: '1px solid #E4E7EC',
-    padding: '0 0'
-  },
-
-  authenticationCopy: {
-    minWidth: 0,
-    flex: 1
-  },
-
-  authenticationTitle: {
-    color: '#172033',
-    fontSize: '18px',
-    lineHeight: 1.2,
-    fontWeight: '600'
-  },
-
-  authenticationDescription: {
-    marginTop: '5px',
-    color: '#8A9098',
-    fontSize: '15px',
-    lineHeight: 1.45
-  },
-
-  twoFactorToggle: {
-    width: '64px',
-    height: '36px',
-    padding: '3px',
-    border: 'none',
-    borderRadius: '999px',
-    background: '#D9DDE3',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    cursor: 'pointer',
-    flexShrink: 0,
-    transition: 'background 180ms ease, opacity 180ms ease'
-  },
-
-  twoFactorToggleOn: {
-    background: '#0B172A',
-    justifyContent: 'flex-end'
-  },
-
-  twoFactorToggleDisabled: {
-    opacity: 0.55,
-    cursor: 'wait'
-  },
-
-  twoFactorToggleKnob: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '50%',
-    background: '#FFFFFF',
-    boxShadow: '0 1px 4px rgba(11,23,42,0.18)',
-    transition: 'transform 180ms ease'
-  },
-
-  twoFactorToggleKnobOn: {
-    transform: 'translateX(0)'
-  },
-
-  twoFactorSetup: {
-    padding: '26px 0 4px',
-    borderBottom: '1px solid #E4E7EC'
-  },
-
-  twoFactorSetupStep: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '6px',
-    color: '#172033',
-    fontSize: '17px',
-    lineHeight: 1.45
-  },
-
-  twoFactorSetupStepSecond: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '6px',
-    color: '#172033',
-    fontSize: '17px',
-    lineHeight: 1.45,
-    marginTop: '26px',
-    marginBottom: '13px'
-  },
-
-  twoFactorStepTitle: {
-    fontWeight: '700',
-    flexShrink: 0
-  },
-
-  twoFactorStepText: {
-    fontWeight: '400'
-  },
-
-  twoFactorQrCard: {
-    width: '100%',
-    minHeight: '286px',
-    marginTop: '20px',
-    border: '1px solid #E4E7EC',
-    borderRadius: '18px',
-    background: '#FFFFFF',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-
-  twoFactorQrCode: {
-    width: '220px',
-    height: '220px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#FFFFFF'
-  },
-
-  twoFactorCodeInput: {
-    width: '100%',
-    height: '54px',
-    boxSizing: 'border-box',
-    border: '1.5px solid #D7DAE0',
-    borderRadius: '15px',
-    outline: 'none',
-    background: '#FFFFFF',
-    color: '#172033',
-    padding: '0 16px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '16px',
-    letterSpacing: '2px'
-  },
-
-  twoFactorError: {
-    marginTop: '9px',
-    color: '#DC2626',
-    fontSize: '13px',
-    lineHeight: 1.45,
-    fontWeight: '500'
-  },
-
-  twoFactorSetupFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-    marginTop: '20px',
-    paddingBottom: '10px'
-  },
-
-  twoFactorCancelButton: {
-    minWidth: '104px',
-    height: '44px',
-    padding: '0 18px',
-    border: '1px solid #D7DAE0',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#111827',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  twoFactorVerifyButton: {
-    minWidth: '104px',
-    height: '44px',
-    padding: '0 20px',
-    border: 'none',
-    borderRadius: '999px',
-    background: '#111111',
-    color: '#FFFFFF',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  twoFactorVerifyButtonDisabled: {
-    opacity: 0.42,
-    cursor: 'not-allowed'
-  },
-
-  securitySection: {
-    width: '100%'
-  },
-
-  securityCard: {
-    width: '100%',
-    maxWidth: '720px',
-    paddingTop: '2px'
-  },
-
-  securityIntro: {
-    marginBottom: '26px'
-  },
-
-  securityIntroTitle: {
-    color: '#111827',
-    fontSize: '22px',
-    lineHeight: 1.2,
-    fontWeight: '600'
-  },
-
-  securityIntroText: {
-    marginTop: '5px',
-    color: '#7A808A',
-    fontSize: '14px',
-    lineHeight: 1.45
-  },
-
-  passwordFieldGroup: {
-    marginBottom: '22px'
-  },
-
-  passwordFieldLabel: {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#172033',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-
-  passwordInputWrap: {
-    width: '100%',
-    minHeight: '54px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    border: '1.5px solid #D7DAE0',
-    borderRadius: '15px',
-    background: '#FFFFFF',
-    padding: '0 10px 0 16px',
-    transition: 'border-color 180ms ease, box-shadow 180ms ease, background 180ms ease'
-  },
-
-  passwordInputValid: {
-    borderColor: '#16A34A',
-    boxShadow: '0 0 0 1px rgba(22,163,74,0.05), 0 5px 18px rgba(22,163,74,0.06)'
-  },
-
-  passwordInputInvalid: {
-    borderColor: '#DC2626',
-    boxShadow: '0 0 0 1px rgba(220,38,38,0.04), 0 5px 18px rgba(220,38,38,0.05)'
-  },
-
-  passwordInput: {
-    flex: 1,
-    minWidth: 0,
-    border: 'none',
-    outline: 'none',
-    background: 'transparent',
-    color: '#172033',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '16px',
-    padding: '13px 0'
-  },
-
-  passwordToggle: {
-    width: '38px',
-    height: '38px',
-    border: 'none',
-    borderRadius: '50%',
-    background: 'transparent',
-    color: '#5F6772',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    flexShrink: 0
-  },
-
-  passwordValidMark: {
-    width: '21px',
-    height: '21px',
-    borderRadius: '50%',
-    background: '#16A34A',
-    color: '#FFFFFF',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '12px',
-    fontWeight: '700',
-    flexShrink: 0
-  },
-
-  passwordValidationError: {
-    marginTop: '7px',
-    color: '#DC2626',
-    fontSize: '13px',
-    lineHeight: 1.4,
-    fontWeight: '500'
-  },
-
-  passwordRules: {
-    marginTop: '9px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px'
-  },
-
-  passwordRule: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    color: '#8A9098',
-    fontSize: '13px',
-    lineHeight: 1.35,
-    transition: 'color 180ms ease'
-  },
-
-  passwordRuleValid: {
-    color: '#16A34A'
-  },
-
-  passwordRuleDot: {
-    width: '14px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '14px',
-    fontWeight: '700'
-  },
-
-  changePasswordButton: {
-    width: '100%',
-    minHeight: '50px',
-    border: 'none',
-    borderRadius: '999px',
-    background: '#0B172A',
-    color: '#FFFFFF',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    boxShadow: '0 8px 22px rgba(11,23,42,0.12)',
-    transition: 'transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease'
-  },
-
-  changePasswordButtonDisabled: {
-    opacity: 0.42,
-    cursor: 'not-allowed',
-    boxShadow: 'none'
-  },
-
-  settingsContent: {
-    flex: 1,
-    minWidth: 0,
-    padding: '38px 12px 20px 38px'
-  },
-
-  settingsContentTitle: {
-    margin: '0 0 22px',
-    color: '#111827',
-    fontSize: '30px',
-    lineHeight: 1.15,
-    fontWeight: '500'
-  },
-
-  settingsRows: {
-    width: '100%'
-  },
-
-  settingsRow: {
-    minHeight: '76px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '25px',
-    borderTop: '1px solid #E4E7EC',
-    padding: '0 0'
-  },
-
-  settingsRowLabel: {
-    color: '#172033',
-    fontSize: '17px',
-    fontWeight: '500'
-  },
-
-  settingsRowValue: {
-    color: '#626872',
-    fontSize: '16px',
-    fontWeight: '400',
-    textAlign: 'right',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap'
-  },
-
-  deleteAccountRow: {
-    minHeight: '88px'
-  },
-
-  deleteAccountButton: {
-    minWidth: '106px',
-    height: '42px',
-    padding: '0 20px',
-    border: '1.5px solid #D92D20',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#D92D20',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  sessionsDescription: {
-    color: '#8A9098',
-    fontSize: '15px',
-    lineHeight: 1.5,
-    maxWidth: '720px',
-    marginBottom: '24px'
-  },
-
-  sessionsList: {
-    width: '100%',
-    maxWidth: '760px',
-    borderTop: '1px solid #E4E7EC'
-  },
-
-  sessionRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '20px',
-    padding: '22px 0',
-    borderBottom: '1px solid #E4E7EC'
-  },
-
-  sessionIcon: {
-    width: '54px',
-    height: '54px',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#111827'
-  },
-
-  sessionInfo: {
-    minWidth: 0,
-    flex: 1,
-    position: 'relative'
-  },
-
-  sessionAction: {
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    minWidth: '150px'
-  },
-
-  sessionName: {
-    color: '#111827',
-    fontSize: '19px',
-    lineHeight: 1.2,
-    fontWeight: '600'
-  },
-
-  sessionMeta: {
-    marginTop: '5px',
-    color: '#6F7680',
-    fontSize: '15px',
-    lineHeight: 1.35
-  },
-
-  currentSessionBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    minHeight: '34px',
-    padding: '0 13px',
-    marginTop: '10px',
-    borderRadius: '999px',
-    background: '#ECFDF3',
-    color: '#16803A',
-    fontSize: '12px',
-    fontWeight: '700',
-    letterSpacing: '0.45px'
-  },
-
-  sessionLogoutButton: {
-    minWidth: '128px',
-    height: '44px',
-    padding: '0 20px',
-    marginTop: '0',
-    border: '1.5px solid #D7DAE0',
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: '#111827',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '15px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-
-  sessionLogoutButtonDisabled: {
-    opacity: 0.55,
-    cursor: 'wait'
-  },
-
-  sessionsEmpty: {
-    padding: '30px 0',
-    color: '#8A9098',
-    fontSize: '15px'
-  },
-
-  settingsComingSoon: {
-    width: '100%',
-    textAlign: 'center'
-  },
-
-  comingSoonText: {
-    marginTop: '18px',
-    color: '#8A9098',
-    fontSize: '18px',
-    fontWeight: '500'
-  },
-
-  accountLogoutButton: {
-    width: '100%',
-    minHeight: '48px',
-    border: 'none',
-    borderRadius: '14px',
-    background: 'transparent',
-    color: '#454C56',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '11px',
-    padding: '0 10px',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'background 160ms ease, color 160ms ease'
-  },
-
-  footerNote: {
-    textAlign: 'center',
-    color: '#A0A6AE',
-    fontSize: '12px',
-    padding: '5px 0 0'
-  },
-
-  mobileMenuButton: {
-    position: 'fixed',
-    top: '14px',
-    left: '14px',
-    width: '42px',
-    height: '42px',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '999px',
-    background: '#FFFFFF',
-    color: colors.navy,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 200,
-    boxShadow: '0 6px 20px rgba(20,28,40,0.10)'
-  },
-
-  main: {
-    flex: 1,
-    minWidth: 0,
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    background: '#FFFFFF'
-  },
-
-  topbar: {
-    height: '60px',
-    minHeight: '60px',
-    padding: '0 24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(255,255,255,0.96)',
-    borderBottom: `1px solid ${colors.border}`,
-    position: 'relative',
-    zIndex: 10
-  },
-
-  topbarNotice: {
-    color: '#858C96',
-    fontSize: '12px',
-    lineHeight: 1.3,
-    fontWeight: '400',
-    letterSpacing: '0.05px',
-    textAlign: 'center'
-  },
-
-  chatViewport: {
-    flex: 1,
-    minHeight: 0,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    background: 'radial-gradient(circle at 64% 33%, rgba(212,220,255,0.17), transparent 24%), radial-gradient(circle at 46% 78%, rgba(222,238,230,0.16), transparent 28%), #FFFFFF'
-  },
-
-  welcomeArea: {
-    width: '100%',
-    maxWidth: '1060px',
-    margin: 'auto',
-    padding: '45px 30px 55px',
-    boxSizing: 'border-box',
-    textAlign: 'center'
-  },
-
-  welcomeMark: {
-    width: '66px',
-    height: '66px',
-    margin: '0 auto 20px',
-    borderRadius: '50%',
-    background: colors.navy,
-    color: colors.goldLight,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 14px 30px rgba(11,23,42,0.11)'
-  },
-
-  welcomeMarkImage: { width: '48px', height: '48px', objectFit: 'contain' },
-
-  welcomeEyebrow: {
-    fontSize: '12px',
-    fontWeight: '700',
-    letterSpacing: '3px',
-    color: colors.gold,
-    marginBottom: '18px'
-  },
-
-  welcomeTitle: {
-    margin: 0,
-    fontSize: 'clamp(42px, 5vw, 68px)',
-    lineHeight: 1.04,
-    letterSpacing: '-1.8px',
-    fontWeight: '700',
-    color: colors.navy
-  },
-
-  welcomeText: {
-    maxWidth: '900px',
-    margin: '24px auto 0',
-    fontSize: '16px',
-    lineHeight: 1.5,
-    fontWeight: '400',
-    color: '#737B86'
-  },
-
-  disclaimer: {
-    maxWidth: '850px',
-    minHeight: '70px',
-    margin: '30px auto 0',
-    padding: '12px 22px',
-    boxSizing: 'border-box',
-    border: `1px solid #E3DDCF`,
-    borderRadius: '999px',
-    background: 'rgba(255,255,255,0.88)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '12px',
-    color: '#7A7A78',
-    fontSize: '14px',
-    lineHeight: 1.4,
-    textAlign: 'left'
-  },
-
-  disclaimerLink: {
-    color: colors.navy,
-    fontWeight: '700',
-    textDecoration: 'none'
-  },
-
-  disclaimerIcon: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '50%',
-    border: `1.5px solid ${colors.gold}`,
-    color: colors.gold,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0
-  },
-
-  messagesContainer: {
-    width: '100%',
-    maxWidth: '1050px',
-    margin: '0 auto',
-    padding: '38px 28px 40px',
-    boxSizing: 'border-box'
-  },
-
-  messageRow: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '12px',
-    marginBottom: '18px'
-  },
-
-  messageAvatar: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '50%',
-    background: colors.navy,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0
-  },
-
-  messageAvatarImage: { width: '27px', height: '27px', objectFit: 'contain' },
-
-  message: {
-    maxWidth: 'min(820px, 82%)',
-    padding: '15px 19px',
-    borderRadius: '999px',
-    wordBreak: 'break-word',
-    fontSize: '14px',
-    lineHeight: 1.6
-  },
-
-  userMessage: {
-    background: colors.navy,
-    color: '#FFFFFF',
-    borderBottomRightRadius: '999px',
-    boxShadow: '0 8px 22px rgba(11,23,42,0.10)'
-  },
-
-  botMessage: {
-    background: '#FFFFFF',
-    color: colors.text,
-    border: `1px solid ${colors.border}`,
-    borderBottomLeftRadius: '999px',
-    boxShadow: '0 5px 20px rgba(20,28,40,0.045)'
-  },
-
-  typingCursor: {
-    display: 'inline-block',
-    width: '5px',
-    height: '18px',
-    background: colors.gold,
-    marginLeft: '4px',
-    verticalAlign: 'middle',
-    animation: 'blink 0.8s infinite'
-  },
-
-  composerArea: {
-    padding: '12px 30px 23px',
-    background: '#FFFFFF',
-    flexShrink: 0
-  },
-
-  composerCard: {
-    width: '100%',
-    maxWidth: '980px',
-    margin: '0 auto',
-    padding: '14px 15px 10px',
-    boxSizing: 'border-box',
-    background: '#FFFFFF',
-    border: `1px solid #E1E4E8`,
-    borderRadius: '24px',
-    boxShadow: '0 10px 35px rgba(20,28,40,0.07)'
-  },
-
-  composerHint: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '9px',
-    color: '#4E5661',
-    fontSize: '14px',
-    fontWeight: '500',
-    padding: '2px 6px 8px'
-  },
-
-  composerInputRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px'
-  },
-
-  input: {
-    flex: 1,
-    minWidth: 0,
-    height: '52px',
-    border: '1px solid rgba(102, 118, 255, 0.22)',
-    outline: 'none',
-    background: '#FAFBFC',
-    borderRadius: '18px',
-    padding: '0 15px',
-    boxShadow: '0 0 0 1px rgba(184, 146, 74, 0.05), 0 0 9px rgba(102, 118, 255, 0.08)',
-    color: colors.text,
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    fontSize: '14px'
-  },
-
-  sendButton: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '999px',
-    border: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    transition: 'all 0.2s ease'
-  },
-
-  sendButtonActive: {
-    background: colors.navy,
-    color: '#FFFFFF',
-    cursor: 'pointer',
-    boxShadow: '0 7px 16px rgba(11,23,42,0.15)'
-  },
-
-  sendButtonDisabled: {
-    background: '#ECEEF1',
-    color: '#A7ACB4',
-    cursor: 'not-allowed'
-  },
-
-  composerFooter: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '9px 4px 0',
-    minHeight: '31px'
-  },
-
-  composerChip: {
-    height: '31px',
-    padding: '0 10px',
-    borderRadius: '999px',
-    background: '#F5F6F8',
-    color: '#69717C',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '13px',
-    fontWeight: '500'
-  },
-
-  composerDisclaimer: {
-    marginLeft: 'auto',
-    color: '#A0A5AC',
-    fontSize: '13px'
-  },
-
-  loginRequired: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#F5F7FA',
-    fontFamily: "'Titillium Web', Geneva, Tahoma, sans-serif",
-    padding: '20px',
-    boxSizing: 'border-box'
-  },
-
-  loginRequiredCard: {
-    width: '100%',
-    maxWidth: '420px',
-    padding: '40px',
-    textAlign: 'center',
-    background: '#FFFFFF',
-    border: `1px solid ${colors.border}`,
-    borderRadius: '20px',
-    boxShadow: '0 20px 55px rgba(11,23,42,0.08)'
-  },
-
-  loginRequiredIcon: {
-    width: '60px',
-    height: '60px',
-    margin: '0 auto 16px',
-    borderRadius: '999px',
-    background: colors.navy,
-    color: colors.goldLight,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-
-  loginRequiredTitle: {
-    margin: '0 0 7px',
-    color: colors.navy,
-    fontSize: '25px',
-    fontWeight: '700'
-  },
-
-  loginRequiredText: {
-    margin: 0,
-    color: colors.muted,
-    fontSize: '16px'
-  }
-};
-
-if (typeof document !== 'undefined') {
-  const styleId = 'legal-chatbot-global-styles';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.innerHTML = `
-      @keyframes blink {
-        0%, 45% { opacity: 1; }
-        46%, 100% { opacity: 0; }
-      }
-
-      * { box-sizing: border-box; }
-      html, body, #root { margin: 0; min-height: 100%; }
-      body { font-family: 'Titillium Web', Geneva, Tahoma, sans-serif; }
-      button, input { font: inherit; }
-      button { -webkit-tap-highlight-color: transparent; }
-      input::placeholder { color: #A3A8AF; }
-      .account-logout-button:hover { background: #F5F6F8 !important; }
-      .accountActionButton:hover { background: #F5F6F8 !important; }
-      .deleteAccountButton:hover { background: #FEF3F2 !important; }
-      @keyframes accountModalOverlayIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes accountModalIn {
-        from { opacity: 0; transform: translateY(12px) scale(0.985); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      input:focus {
-        border-color: rgba(102, 118, 255, 0.34) !important;
-        box-shadow: 0 0 0 1px rgba(184, 146, 74, 0.07), 0 0 10px rgba(102, 118, 255, 0.11) !important;
-      }
-      ::selection { background: rgba(184, 146, 74, 0.20); }
-      ::-webkit-scrollbar { width: 7px; height: 7px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: rgba(20, 28, 40, 0.14); border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: rgba(20, 28, 40, 0.22); }
-
-      @media (max-width: 899px) {
-        .legal-chatbot-desktop-only { display: none !important; }
-      }
-
-      @media (max-width: 700px) {
-        .legal-chatbot-welcome-title { font-size: 40px !important; }
-      }
-
-      @media (max-width: 600px) {
-        .accountModal { max-height: calc(100vh - 24px) !important; }
-        .profileModal { padding: 24px !important; }
-        .settingsModal { min-height: 360px !important; padding: 20px !important; }
-        .settingsLayout { flex-direction: column !important; min-height: 0 !important; }
-        .settingsSidebar { width: 100% !important; padding: 28px 0 12px !important; border-right: none !important; border-bottom: 1px solid #E4E7EC !important; }
-        .settingsHeading { margin-bottom: 12px !important; }
-        .settingsContent { padding: 24px 0 8px !important; }
-        .securityCard { max-width: none !important; }
-        .authenticationSection { max-width: none !important; }
-        .authenticationRow { min-height: 82px !important; }
-        .twoFactorSetupStep { align-items: flex-start !important; }
-        .twoFactorQrCard { min-height: 270px !important; }
-        .settingsRow { align-items: flex-start !important; flex-direction: column !important; justify-content: center !important; gap: 5px !important; padding: 14px 0 !important; }
-        .settingsRowValue { text-align: left !important; white-space: normal !important; }
-        .deleteAccountRow { flex-direction: row !important; align-items: center !important; }
-        .profileAvatarLarge { width: 140px !important; height: 140px !important; }
-        .sessionRow { gap: 12px !important; }
-        .sessionName { font-size: 17px !important; }
-        .sessionMeta { font-size: 14px !important; }
-        .sessionAction { min-width: 0 !important; width: 100% !important; justify-content: flex-start !important; }
-        .sessionLogoutButton { width: 100% !important; margin-top: 10px !important; }
-        .dataControlsSection { margin-top: 28px !important; padding-top: 24px !important; }
-        .dataControlRow { align-items: flex-start !important; flex-direction: column !important; gap: 12px !important; padding: 16px 0 !important; }
-        .dataControlSecondaryButton, .dataControlDeleteButton { width: 100% !important; }
-
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
 
 export default Chatbot;

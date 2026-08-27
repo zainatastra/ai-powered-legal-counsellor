@@ -4,9 +4,9 @@ const SkeletonBlock = ({ style, className = '', dark = false }) => (
   <div className={`skeleton ${dark ? 'on-dark' : ''} ${className}`.trim()} style={style} aria-hidden="true" />
 );
 
-const BrandSkeleton = ({ dark = false }) => (
+const BrandSkeleton = ({ dark = false, round = false }) => (
   <div style={styles.brandRow}>
-    <SkeletonBlock dark={dark} style={styles.brandMark} />
+    <SkeletonBlock dark={dark} style={{ ...styles.brandMark, ...(round ? { borderRadius: 'var(--radius-full)' } : {}) }} />
     <div style={styles.brandText}>
       <SkeletonBlock dark={dark} style={styles.brandLine} />
       <SkeletonBlock dark={dark} style={styles.brandSubLine} />
@@ -55,38 +55,40 @@ const SessionSkeleton = () => (
 const ChatbotSkeleton = () => (
   <div style={styles.chatPage}>
     <aside className="alc-loading-sidebar" style={styles.chatSidebar}>
-      <BrandSkeleton dark />
+      <BrandSkeleton round />
 
-      <SkeletonBlock dark style={styles.chatUserCard} />
-      <SkeletonBlock dark style={styles.chatNewButton} />
+      <SkeletonBlock style={styles.sidebarLawyersBtn} />
+      <SkeletonBlock style={styles.sidebarSearch} />
+      <SkeletonBlock style={styles.chatNewButton} />
 
       <div style={styles.chatHistoryHead}>
-        <SkeletonBlock dark style={styles.chatHistoryTitle} />
-        <SkeletonBlock dark style={styles.chatHistoryCount} />
+        <SkeletonBlock style={styles.chatHistoryTitle} />
+        <SkeletonBlock style={styles.chatHistoryCount} />
       </div>
 
       <div style={styles.chatHistoryList}>
         {[1, 2, 3].map((item) => (
           <div key={item} style={styles.chatHistoryItem}>
-            <SkeletonBlock dark style={styles.chatHistoryIcon} />
-            <SkeletonBlock dark style={styles.chatHistoryLine} />
+            <SkeletonBlock style={styles.chatHistoryIcon} />
+            <SkeletonBlock style={styles.chatHistoryLine} />
           </div>
         ))}
       </div>
 
-      <SkeletonBlock dark style={styles.chatLogout} />
+      <div style={styles.sidebarFooter}>
+        <div style={styles.sidebarFooterRow}>
+          <SkeletonBlock style={styles.sidebarFooterIcon} />
+          <div style={styles.brandText}>
+            <SkeletonBlock style={styles.sidebarFooterName} />
+            <SkeletonBlock style={styles.sidebarFooterEmail} />
+          </div>
+        </div>
+      </div>
     </aside>
 
     <main style={styles.chatMain}>
       <header className="alc-loading-chat-header" style={styles.chatHeader}>
-        <div style={styles.chatHeaderIdentity}>
-          <SkeletonBlock style={styles.chatHeaderLogo} />
-          <div>
-            <SkeletonBlock style={styles.chatHeaderTitle} />
-            <SkeletonBlock style={styles.chatHeaderSub} />
-          </div>
-        </div>
-        <SkeletonBlock style={styles.chatHeaderStatus} />
+        <SkeletonBlock style={styles.chatHeaderNotice} />
       </header>
 
       <section className="alc-loading-chat-content" style={styles.chatContent}>
@@ -96,6 +98,7 @@ const ChatbotSkeleton = () => (
         <SkeletonBlock style={styles.chatWelcomeTitleShort} />
         <SkeletonBlock style={styles.chatWelcomeText} />
         <SkeletonBlock style={styles.chatWelcomeTextShort} />
+        <SkeletonBlock style={styles.chatWelcomeDisclaimer} />
 
         <div style={styles.chatMessages}>
           <div style={styles.botMessageSkeleton}>
@@ -109,9 +112,18 @@ const ChatbotSkeleton = () => (
       </section>
 
       <div style={styles.chatComposerArea}>
-        <SkeletonBlock style={styles.composerHint} />
-        <SkeletonBlock style={styles.composer} />
-        <SkeletonBlock style={styles.composerDisclaimer} />
+        <div style={styles.composerCard}>
+          <SkeletonBlock style={styles.composerHint} />
+          <div style={styles.composerInputRow}>
+            <SkeletonBlock style={styles.composerInput} />
+            <SkeletonBlock style={styles.composerSendButton} />
+          </div>
+          <div style={styles.composerFooterRow}>
+            <SkeletonBlock style={styles.composerChip} />
+            <SkeletonBlock style={styles.composerChipWide} />
+            <SkeletonBlock style={styles.composerDisclaimer} />
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -343,27 +355,34 @@ const styles = {
     background: 'var(--legal-ivory)'
   },
   chatSidebar: {
-    width: '280px',
-    minWidth: '280px',
+    width: '300px',
+    minWidth: '300px',
     height: '100vh',
     boxSizing: 'border-box',
-    background: 'var(--legal-sidebar-bg)',
-    padding: '22px 16px 16px',
+    background: 'var(--legal-surface)',
+    borderRight: '1px solid var(--legal-border)',
+    padding: '24px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
     gap: '0'
   },
-  chatUserCard: {
+  sidebarLawyersBtn: {
+    width: 'calc(100% - 8px)',
+    height: '46px',
+    borderRadius: 'var(--radius-lg)',
+    margin: '4px 4px 16px'
+  },
+  sidebarSearch: {
     width: '100%',
-    height: '60px',
-    borderRadius: '14px',
-    marginTop: '20px'
+    height: '48px',
+    borderRadius: 'var(--radius-full)',
+    marginBottom: '16px'
   },
   chatNewButton: {
     width: '100%',
-    height: '46px',
+    height: '48px',
     borderRadius: 'var(--radius-full)',
-    marginTop: '14px'
+    marginBottom: '12px'
   },
   chatHistoryHead: {
     display: 'flex',
@@ -384,18 +403,21 @@ const styles = {
   chatHistoryList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '7px'
+    gap: '3px',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden'
   },
   chatHistoryItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '9px',
-    padding: '5px 7px'
+    padding: '8px'
   },
   chatHistoryIcon: {
-    width: '27px',
-    height: '27px',
-    borderRadius: '8px',
+    width: '30px',
+    height: '30px',
+    borderRadius: 'var(--radius-full)',
     flexShrink: 0
   },
   chatHistoryLine: {
@@ -403,11 +425,32 @@ const styles = {
     height: '10px',
     borderRadius: 'var(--radius-full)'
   },
-  chatLogout: {
-    width: '100%',
-    height: '43px',
+  sidebarFooter: {
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px solid var(--legal-border)'
+  },
+  sidebarFooterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '8px'
+  },
+  sidebarFooterIcon: {
+    width: '38px',
+    height: '38px',
     borderRadius: 'var(--radius-full)',
-    marginTop: 'auto'
+    flexShrink: 0
+  },
+  sidebarFooterName: {
+    width: '110px',
+    height: '11px',
+    borderRadius: 'var(--radius-full)'
+  },
+  sidebarFooterEmail: {
+    width: '140px',
+    height: '9px',
+    borderRadius: 'var(--radius-full)'
   },
   chatMain: {
     flex: 1,
@@ -418,38 +461,19 @@ const styles = {
     background: 'var(--legal-ivory)'
   },
   chatHeader: {
-    minHeight: '70px',
-    padding: '0 30px',
+    height: '60px',
+    minHeight: '60px',
+    padding: '0 24px',
     boxSizing: 'border-box',
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     borderBottom: '1px solid var(--legal-border)'
   },
-  chatHeaderIdentity: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '11px'
-  },
-  chatHeaderLogo: {
-    width: '35px',
-    height: '35px',
-    borderRadius: '10px'
-  },
-  chatHeaderTitle: {
-    width: '150px',
-    height: '12px',
-    borderRadius: 'var(--radius-full)',
-    marginBottom: '6px'
-  },
-  chatHeaderSub: {
-    width: '112px',
-    height: '8px',
-    borderRadius: 'var(--radius-full)'
-  },
-  chatHeaderStatus: {
-    width: '94px',
-    height: '10px',
+  chatHeaderNotice: {
+    width: '420px',
+    maxWidth: '70%',
+    height: '9px',
     borderRadius: 'var(--radius-full)'
   },
   chatContent: {
@@ -463,9 +487,9 @@ const styles = {
     boxSizing: 'border-box'
   },
   chatWelcomeIcon: {
-    width: '62px',
-    height: '62px',
-    borderRadius: '17px',
+    width: '66px',
+    height: '66px',
+    borderRadius: 'var(--radius-full)',
     marginBottom: '18px'
   },
   chatWelcomeEyebrow: {
@@ -501,6 +525,13 @@ const styles = {
     height: '11px',
     borderRadius: 'var(--radius-full)'
   },
+  chatWelcomeDisclaimer: {
+    width: '540px',
+    maxWidth: '92%',
+    height: '52px',
+    borderRadius: 'var(--radius-full)',
+    margin: '28px auto 0'
+  },
   chatMessages: {
     width: '100%',
     maxWidth: '760px',
@@ -519,45 +550,84 @@ const styles = {
     justifyContent: 'flex-end'
   },
   messageAvatar: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '9px',
+    width: '38px',
+    height: '38px',
+    borderRadius: 'var(--radius-full)',
     flexShrink: 0
   },
   botBubble: {
     width: '380px',
     maxWidth: '68%',
     height: '72px',
-    borderRadius: '14px'
+    borderRadius: '20px',
+    borderBottomLeftRadius: '6px'
   },
   userBubble: {
     width: '230px',
     maxWidth: '55%',
     height: '48px',
-    borderRadius: '14px'
+    borderRadius: '20px',
+    borderBottomRightRadius: '6px'
   },
   chatComposerArea: {
-    padding: '12px clamp(18px, 7vw, 100px) 17px',
+    padding: '12px clamp(18px, 7vw, 32px) 24px',
     flexShrink: 0
   },
+  composerCard: {
+    width: '100%',
+    maxWidth: '980px',
+    margin: '0 auto',
+    padding: '16px 16px 12px',
+    boxSizing: 'border-box',
+    background: 'var(--legal-surface)',
+    border: '1px solid var(--legal-border)',
+    borderRadius: '20px',
+    boxShadow: 'var(--shadow-md)'
+  },
   composerHint: {
-    width: '130px',
+    width: '170px',
     height: '9px',
     borderRadius: 'var(--radius-full)',
-    marginBottom: '7px'
+    marginBottom: '10px'
   },
-  composer: {
-    width: '100%',
-    maxWidth: '900px',
-    height: '54px',
+  composerInputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  composerInput: {
+    flex: 1,
+    minWidth: 0,
+    height: '52px',
+    borderRadius: 'var(--radius-lg)'
+  },
+  composerSendButton: {
+    width: '48px',
+    height: '48px',
     borderRadius: 'var(--radius-full)',
-    margin: '0 auto'
+    flexShrink: 0
+  },
+  composerFooterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '10px'
+  },
+  composerChip: {
+    width: '100px',
+    height: '31px',
+    borderRadius: 'var(--radius-full)'
+  },
+  composerChipWide: {
+    width: '110px',
+    height: '31px',
+    borderRadius: 'var(--radius-full)'
   },
   composerDisclaimer: {
-    width: '210px',
+    width: '190px',
     height: '8px',
     borderRadius: 'var(--radius-full)',
-    margin: '7px auto 0'
+    marginLeft: 'auto'
   },
 
   // Lawyers

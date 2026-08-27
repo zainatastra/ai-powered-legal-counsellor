@@ -593,107 +593,6 @@ function App() {
 
   /*
    * --------------------------------------------------------------------------
-   * GLOBAL UI ANIMATIONS
-   * --------------------------------------------------------------------------
-   */
-
-  useEffect(() => {
-    const style =
-      document.createElement('style');
-
-    style.innerHTML = `
-      @keyframes fadeInOverlay {
-        from {
-          opacity: 0;
-        }
-
-        to {
-          opacity: 1;
-        }
-      }
-
-      @keyframes fadeInModal {
-        from {
-          opacity: 0;
-          transform: translateY(12px) scale(0.98);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-
-      @keyframes authScreenEnter {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .alc-auth-area {
-        transition:
-          opacity 170ms ease,
-          transform 170ms ease;
-
-        will-change: opacity, transform;
-      }
-
-      .alc-auth-area.is-switching {
-        opacity: 0;
-        transform: translateY(-7px);
-      }
-
-      .alc-auth-screen {
-        animation:
-          authScreenEnter
-          280ms
-          cubic-bezier(0.22, 1, 0.36, 1);
-      }
-
-      .alc-pill-button {
-        transition:
-          transform 180ms ease,
-          box-shadow 180ms ease,
-          background 180ms ease,
-          border-color 180ms ease;
-      }
-
-      .alc-pill-button:hover {
-        transform: translateY(-1px);
-      }
-
-      .alc-pill-button:active {
-        transform: translateY(0);
-      }
-
-      .alc-secondary-button:hover {
-        background: #F0F2F5 !important;
-        border-color: #CCD4DF !important;
-      }
-
-      .alc-primary-button:hover {
-        background: #172A46 !important;
-        box-shadow:
-          0 10px 24px
-          rgba(13, 31, 55, 0.18);
-      }
-    `;
-
-    document.head.appendChild(style);
-
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  /*
-   * --------------------------------------------------------------------------
    * WAIT FOR FIREBASE
    * --------------------------------------------------------------------------
    */
@@ -731,36 +630,21 @@ function App() {
    */
 
   return (
-    <div style={styles.wrapper}>
-
-      {/* ================================================================ */}
-      {/* CHATBOT NAVIGATION                                               */}
-      {/* ================================================================ */}
-
-      {user &&
-        page === 'chatbot' && (
-          <div style={styles.topRight}>
-            <button
-              onClick={() =>
-                handlePageChange(
-                  'lawyers'
-                )
-              }
-              style={styles.glowButton}
-              className="alc-pill-button"
-            >
-              Lawyers
-            </button>
-          </div>
-        )}
+    <div className="app-wrapper">
 
       {/* ================================================================ */}
       {/* LAWYERS NAVIGATION                                               */}
       {/* ================================================================ */}
+      {/* Note: the chatbot page previously had its own floating "Lawyers"  */}
+      {/* button here too. It's been removed -- it duplicated the Lawyers  */}
+      {/* nav item already in the chatbot sidebar, and its fixed top-right */}
+      {/* position visually collided with the chat header, rendering      */}
+      {/* behind it. The Lawyers page itself still needs this cluster,    */}
+      {/* since Lawyers.js has no navigation of its own yet.               */}
 
       {user &&
         page === 'lawyers' && (
-          <div style={styles.topRight}>
+          <div className="floating-nav">
 
             <button
               onClick={() =>
@@ -768,16 +652,14 @@ function App() {
                   'chatbot'
                 )
               }
-              style={styles.glowButton}
-              className="alc-pill-button"
+              className="btn btn-secondary"
             >
               Legal Assistant
             </button>
 
             <button
               onClick={handleLogout}
-              style={styles.logoutButton}
-              className="alc-pill-button"
+              className="btn btn-secondary"
             >
               Sign out
             </button>
@@ -790,7 +672,7 @@ function App() {
       {/* ================================================================ */}
 
       {page === 'verifyEmail' ? (
-        <div style={styles.verificationArea}>
+        <div className="verification-area">
           <EmailVerification
             email={verificationEmail}
             onVerified={
@@ -830,8 +712,7 @@ function App() {
          */
 
         <div
-          style={styles.authArea}
-          className={`alc-auth-area${
+          className={`auth-area${
             authTransition
               ? ' is-switching'
               : ''
@@ -845,7 +726,7 @@ function App() {
           {page === 'signup' && (
             <div
               key="signup-screen"
-              className="alc-auth-screen"
+              className="auth-screen-enter"
             >
               <Signup
                 onSignupComplete={
@@ -867,7 +748,7 @@ function App() {
           {page === 'login' && (
             <div
               key="login-screen"
-              className="alc-auth-screen"
+              className="auth-screen-enter"
             >
               <Login
                 onLoginSuccess={
@@ -894,7 +775,7 @@ function App() {
           {page === 'resetPassword' && (
             <div
               key="reset-screen"
-              className="alc-auth-screen"
+              className="auth-screen-enter"
             >
               <ResetPassword
                 onBackToLogin={() =>
@@ -911,79 +792,5 @@ function App() {
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    position: 'relative',
-    minHeight: '100vh',
-    background: 'transparent',
-    color: '#10243E',
-    fontFamily: 'Saira, sans-serif'
-  },
-
-  authArea: {
-    minHeight: '100vh',
-    width: '100%'
-  },
-
-  verificationArea: {
-    minHeight: '100vh',
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxSizing: 'border-box'
-  },
-
-  topRight: {
-    position: 'absolute',
-    top: '20px',
-    right: '28px',
-    display: 'flex',
-    gap: '10px',
-    zIndex: 10,
-    alignItems: 'center',
-    padding: '7px',
-    background:
-      'rgba(255, 255, 255, 0.90)',
-    border:
-      '1px solid rgba(13, 31, 55, 0.09)',
-    borderRadius: '999px',
-    boxShadow:
-      '0 8px 30px rgba(13, 31, 55, 0.08)',
-    backdropFilter: 'blur(14px)',
-    WebkitBackdropFilter: 'blur(14px)'
-  },
-
-  glowButton: {
-    minHeight: '42px',
-    padding: '0 20px',
-    borderRadius: '999px',
-    border: '1px solid #D8DEE8',
-    background: '#FFFFFF',
-    color: '#172A46',
-    fontWeight: '600',
-    fontSize: '14px',
-    fontFamily: 'Saira, sans-serif',
-    cursor: 'pointer',
-    boxShadow: 'none',
-    outline: 'none'
-  },
-
-  logoutButton: {
-    minHeight: '42px',
-    padding: '0 20px',
-    borderRadius: '999px',
-    border: '1px solid #E4CFC8',
-    background: '#FFF9F7',
-    color: '#8F3F32',
-    fontWeight: '600',
-    fontSize: '14px',
-    fontFamily: 'Saira, sans-serif',
-    cursor: 'pointer',
-    boxShadow: 'none',
-    outline: 'none'
-  }
-};
 
 export default App;
