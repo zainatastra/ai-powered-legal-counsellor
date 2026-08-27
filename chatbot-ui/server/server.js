@@ -17,13 +17,51 @@ dotenv.config({
 // -----------------------------------------------------------------------------
 // Firebase Admin SDK
 // -----------------------------------------------------------------------------
-
-const serviceAccount = require('./firebase-service-account.json');
+//
+// Credentials are loaded from environment variables instead of a service
+// account JSON file. Never commit a Firebase service-account private key.
+// For local development, put the following values in server/.env:
+//
+// FIREBASE_PROJECT_ID=...
+// FIREBASE_CLIENT_EMAIL=...
+// FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"
+//
+// In managed Google environments, Application Default Credentials may be
+// used automatically when these variables are not present.
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  const firebaseProjectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT;
+
+  const firebaseClientEmail =
+    process.env.FIREBASE_CLIENT_EMAIL;
+
+  const firebasePrivateKey =
+    process.env.FIREBASE_PRIVATE_KEY
+      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\\n')
+      : '';
+
+  if (
+    firebaseProjectId &&
+    firebaseClientEmail &&
+    firebasePrivateKey
+  ) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: firebaseProjectId,
+        clientEmail: firebaseClientEmail,
+        privateKey: firebasePrivateKey
+      })
+    });
+  } else {
+    // Allows Google-managed environments to use Application Default
+    // Credentials without storing a private key in the application.
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault()
+    });
+  }
 }
 
 const adminAuth = admin.auth();
@@ -50,6 +88,13 @@ const RESEND_API_KEY =
 const resend = RESEND_API_KEY
   ? new Resend(RESEND_API_KEY)
   : null;
+
+// -----------------------------------------------------------------------------
+// Free legal-chat usage limit
+// -----------------------------------------------------------------------------
+const FREE_MESSAGE_LIMIT = 10;
+const FREE_MESSAGE_WINDOW_MS = 5 * 60 * 60 * 1000;
+const FREE_MESSAGE_USAGE_COLLECTION = 'legalChatUsage';
 
 // -----------------------------------------------------------------------------
 // OTP configuration
@@ -1623,6 +1668,27 @@ app.post(
       });
     }
 
+    const authorization =
+      typeof req.headers.authorization === 'string'
+        ? req.headers.authorization.trim()
+        : '';
+
+    if (!authorization.toLowerCase().startsWith('bearer ')) {
+      return res.status(401).json({
+        message:
+          'Authentication is required.'
+      });
+    }
+
+    const idToken = authorization.slice(7).trim();
+
+    if (!idToken) {
+      return res.status(401).json({
+        message:
+          'Authentication is required.'
+      });
+    }
+
     if (!OPENAI_API_KEY) {
       console.error(
         'OPENAI_API_KEY is not configured.'
@@ -1635,6 +1701,134 @@ app.post(
     }
 
     try {
+      const decodedToken =
+        await adminAuth.verifyIdToken(idToken);
+
+      const uid = decodedToken.uid;
+      const userRecord = await adminAuth.getUser(uid);
+
+      if (!userRecord.emailVerified) {
+        return res.status(403).json({
+          message:
+            'Please verify your email address before using the legal counsellor.'
+        });
+      }
+
+      const usageRef = adminDb
+        .collection(FREE_MESSAGE_USAGE_COLLECTION)
+        .doc(uid);
+
+      let usageResult = null;
+
+      await adminDb.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(usageRef);
+        const existing = snapshot.exists ? snapshot.data() : null;
+        const now = Date.now();
+        const blockedUntil = existing?.blockedUntil?.toDate?.();
+
+        // The five-hour window has ended: give the user a fresh allowance.
+        if (blockedUntil && blockedUntil.getTime() <= now) {
+          transaction.set(usageRef, {
+            uid,
+            messageCount: 1,
+            blockedUntil: null,
+            windowStartedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
+            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
+          }, { merge: true });
+
+          usageResult = {
+            allowed: true,
+            remaining: FREE_MESSAGE_LIMIT - 1
+          };
+          return;
+        }
+
+        // Still blocked from the previous exhausted allowance.
+        if (blockedUntil && blockedUntil.getTime() > now) {
+          usageResult = {
+            allowed: false,
+            blockedUntil,
+            remainingSeconds: Math.ceil(
+              (blockedUntil.getTime() - now) / 1000
+            )
+          };
+          return;
+        }
+
+        const currentCount = Number(existing?.messageCount || 0);
+
+        // Defensive recovery for an inconsistent record.
+        if (currentCount >= FREE_MESSAGE_LIMIT) {
+          const newBlockedUntil =
+            new Date(now + FREE_MESSAGE_WINDOW_MS);
+
+          transaction.set(usageRef, {
+            uid,
+            messageCount: FREE_MESSAGE_LIMIT,
+            blockedUntil: admin.firestore.Timestamp.fromDate(newBlockedUntil),
+            limitReachedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
+            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
+          }, { merge: true });
+
+          usageResult = {
+            allowed: false,
+            blockedUntil: newBlockedUntil,
+            remainingSeconds: Math.ceil(
+              FREE_MESSAGE_WINDOW_MS / 1000
+            )
+          };
+          return;
+        }
+
+        const nextCount = currentCount + 1;
+
+        // The exact five-hour countdown begins when the final free message
+        // is consumed.
+        if (nextCount === FREE_MESSAGE_LIMIT) {
+          const newBlockedUntil =
+            new Date(now + FREE_MESSAGE_WINDOW_MS);
+
+          transaction.set(usageRef, {
+            uid,
+            messageCount: FREE_MESSAGE_LIMIT,
+            blockedUntil: admin.firestore.Timestamp.fromDate(newBlockedUntil),
+            limitReachedAt: admin.firestore.Timestamp.fromDate(new Date(now)),
+            updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
+          }, { merge: true });
+
+          usageResult = {
+            allowed: true,
+            remaining: 0,
+            limitReached: true,
+            blockedUntil: newBlockedUntil
+          };
+          return;
+        }
+
+        transaction.set(usageRef, {
+          uid,
+          messageCount: nextCount,
+          blockedUntil: null,
+          updatedAt: admin.firestore.Timestamp.fromDate(new Date(now))
+        }, { merge: true });
+
+        usageResult = {
+          allowed: true,
+          remaining: FREE_MESSAGE_LIMIT - nextCount
+        };
+      });
+
+      if (!usageResult?.allowed) {
+        return res.status(429).json({
+          code: 'FREE_MESSAGE_LIMIT_REACHED',
+          message: 'You are out of Free Messages.',
+          blockedUntil:
+            usageResult.blockedUntil?.toISOString?.() || null,
+          remainingSeconds:
+            usageResult.remainingSeconds || 0
+        });
+      }
+
       const client =
         new OpenAI({
           apiKey:
@@ -1664,7 +1858,13 @@ app.post(
       }
 
       return res.json({
-        text
+        text,
+        usage: {
+          remaining: usageResult?.remaining ?? null,
+          limitReached: Boolean(usageResult?.limitReached),
+          blockedUntil:
+            usageResult?.blockedUntil?.toISOString?.() || null
+        }
       });
     } catch (error) {
       console.error(
@@ -1680,6 +1880,17 @@ app.post(
             error?.message
         }
       );
+
+      if (
+        error?.code === 'auth/id-token-expired' ||
+        error?.code === 'auth/invalid-id-token' ||
+        error?.code === 'auth/argument-error'
+      ) {
+        return res.status(401).json({
+          message:
+            'Your authentication session has expired. Please log in again.'
+        });
+      }
 
       const status =
         Number.isInteger(
@@ -1751,6 +1962,9 @@ app.listen(
 
     console.log(
       'Maximum OTP attempts: 5'
+    );
+    console.log(
+      `Free legal-chat messages: ${FREE_MESSAGE_LIMIT} per 5-hour cooldown`
     );
   }
 );
