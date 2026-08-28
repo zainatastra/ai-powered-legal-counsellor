@@ -28,6 +28,7 @@ import {
   TotpMultiFactorGenerator
 } from 'firebase/auth';
 import { ConsentModal, SuccessModal, ErrorModal, Toast } from './GlobalFeedback';
+import Loading from './Loading';
 
 const PUBLIC_PATH = process.env.PUBLIC_URL || '';
 const sidebarLogoSrc = `${PUBLIC_PATH}/favicon.png`;
@@ -60,7 +61,8 @@ const Icon = ({ name, size = 20, stroke = 1.8 }) => {
     laptop: <><rect x="4" y="5" width="16" height="11" rx="1.5" /><path d="M2 19h20" /><path d="M9 19h6" /></>,
     mobile: <><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M11 18.5h2" /></>,
     eye: <><path d="M2.5 12s3.2-5 9.5-5 9.5 5 9.5 5-3.2 5-9.5 5-9.5-5-9.5-5Z" /><circle cx="12" cy="12" r="2.5" /></>,
-    eyeOff: <><path d="m3 3 18 18" /><path d="M10.6 6.3C11.05 6.2 11.51 6.14 12 6.14c6.3 0 9.5 5.86 9.5 5.86a16.3 16.3 0 0 1-2.65 3.25" /><path d="M6.15 6.8C3.75 8.1 2.5 12 2.5 12s3.2 5.86 9.5 5.86c1.02 0 1.95-.15 2.8-.4" /><path d="M10.3 10.3a2.5 2.5 0 0 0 3.4 3.4" /></>
+    eyeOff: <><path d="m3 3 18 18" /><path d="M10.6 6.3C11.05 6.2 11.51 6.14 12 6.14c6.3 0 9.5 5.86 9.5 5.86a16.3 16.3 0 0 1-2.65 3.25" /><path d="M6.15 6.8C3.75 8.1 2.5 12 2.5 12s3.2 5.86 9.5 5.86c1.02 0 1.95-.15 2.8-.4" /><path d="M10.3 10.3a2.5 2.5 0 0 0 3.4 3.4" /></>,
+    lock: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>
   };
 
   return (
@@ -214,6 +216,18 @@ const sortSessions = (items) => [...items].sort((a, b) => {
   return bTime - aTime;
 });
 
+// Formats an ISO timestamp in the viewer's own local time/timezone -- the
+// server deliberately never formats this itself, since the server's
+// timezone may not match the user's.
+const formatResetTime = (isoString) => {
+  if (!isoString) return '';
+  try {
+    return new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+};
+
 const Chatbot = ({ onLogout }) => {
   const [messages, setMessages] = useState([
     { sender: 'bot', text: 'Hello! How can I help you today?' }
@@ -258,8 +272,12 @@ const Chatbot = ({ onLogout }) => {
   const [totpSecret, setTotpSecret] = useState(null);
   const [totpUri, setTotpUri] = useState('');
   const [twoFactorError, setTwoFactorError] = useState('');
+  const [chatLimit, setChatLimit] = useState({ checked: false, reached: false, resetAt: null });
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const qrCodeRef = useRef(null);
   const sessionIdRef = useRef(null);
+  const currentUserRef = useRef(null);
 
 
   const dropdownRefs = useRef({});
@@ -268,6 +286,8 @@ const Chatbot = ({ onLogout }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      currentUserRef.current = user;
+
       if (user) {
         try {
           await user.reload();
@@ -275,11 +295,13 @@ const Chatbot = ({ onLogout }) => {
         } catch (error) {
           console.error('Authentication refresh failed:', error);
           setUserId(null);
+          setAuthChecked(true);
           return;
         }
 
         if (!auth.currentUser?.emailVerified) {
           setUserId(null);
+          setAuthChecked(true);
           return;
         }
 
@@ -313,9 +335,18 @@ const Chatbot = ({ onLogout }) => {
         setUserName(resolvedName);
         setProfileNameInput(resolvedName);
         setProfileAvatarUrl(profileData.photoURL || user.photoURL || '');
-        await fetchChatHistoryList(user.uid);
+        setAuthChecked(true);
+
+        setIsLoadingHistory(true);
+        try {
+          await fetchChatHistoryList(user.uid);
+        } finally {
+          setIsLoadingHistory(false);
+        }
       } else {
         setUserId(null);
+        setAuthChecked(true);
+        setIsLoadingHistory(false);
       }
     });
 
@@ -339,6 +370,65 @@ const Chatbot = ({ onLogout }) => {
   useEffect(() => {
     refreshTwoFactorState();
   }, [userId]);
+
+  // Checks the server-persisted free-message quota whenever a user becomes
+  // authenticated -- covers initial load, page refresh, and logging back
+  // in, so the "out of free messages" state is always driven by the
+  // server/Firestore, never by anything stored in the browser.
+  useEffect(() => {
+    if (!userId) {
+      setChatLimit({ checked: false, reached: false, resetAt: null });
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const activeUser = auth.currentUser || currentUserRef.current;
+        const idToken = await activeUser?.getIdToken();
+        if (!idToken) return;
+
+        const response = await fetch('/api/legal-chat/limit-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
+
+        const data = await response.json();
+        if (cancelled || !response.ok) return;
+
+        setChatLimit({
+          checked: true,
+          reached: Boolean(data?.limitReached),
+          resetAt: data?.resetAt || null
+        });
+      } catch (error) {
+        console.error('Chat limit status check failed:', error);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // If the lockout is active and the tab stays open past the reset time,
+  // clear it automatically -- the user shouldn't need to refresh to get
+  // access back the moment the 5 hours are up.
+  useEffect(() => {
+    if (!chatLimit.reached || !chatLimit.resetAt) return undefined;
+
+    const msRemaining = new Date(chatLimit.resetAt).getTime() - Date.now();
+    if (msRemaining <= 0) {
+      setChatLimit({ checked: true, reached: false, resetAt: null });
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setChatLimit({ checked: true, reached: false, resetAt: null });
+    }, msRemaining);
+
+    return () => clearTimeout(timer);
+  }, [chatLimit.reached, chatLimit.resetAt]);
 
   useEffect(() => {
     if (!userId) {
@@ -1054,6 +1144,20 @@ const Chatbot = ({ onLogout }) => {
     const userMessage = input.trim();
     if (!userMessage) return;
 
+    // Strictly server-driven: if the last known status says we're locked
+    // out, don't even attempt the request or touch the chat -- just
+    // re-show the same modal. The composer is also disabled below while
+    // this is true, so this is a safety net (e.g. a stale render) rather
+    // than the primary gate.
+    if (chatLimit.reached) {
+      setGlobalFeedback({
+        type: 'error',
+        title: 'Free message limit reached',
+        message: `You are out of Free Messages until ${formatResetTime(chatLimit.resetAt)}.`
+      });
+      return;
+    }
+
     const newMessage = { sender: 'user', text: userMessage };
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
@@ -1065,7 +1169,15 @@ const Chatbot = ({ onLogout }) => {
       // server (previously it accepted unauthenticated requests from
       // anyone who could reach the server directly), so the idToken has
       // to be sent along with the message.
-      const idToken = await auth.currentUser?.getIdToken();
+      //
+      // Falls back to the last-known user from the onAuthStateChanged
+      // listener (currentUserRef) if auth.currentUser is unexpectedly
+      // null at this exact moment -- this was previously causing
+      // "Authentication is required" failures even for a genuinely
+      // logged-in user, when auth.currentUser briefly returned null
+      // during an internal SDK token-refresh cycle.
+      const activeUser = auth.currentUser || currentUserRef.current;
+      const idToken = await activeUser?.getIdToken();
 
       if (!idToken) {
         throw new Error('Your session has expired. Please log in again.');
@@ -1078,10 +1190,38 @@ const Chatbot = ({ onLogout }) => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'The legal assistant could not process the request.');
+
+      if (!response.ok) {
+        if (data?.limitReached) {
+          // The 10th message may have already gone through in a previous
+          // request (in which case this branch won't usually be hit until
+          // the *next* attempt) -- either way, the server is the source of
+          // truth here, so sync local state from its resetAt and remove
+          // the optimistic user message rather than showing it as "sent".
+          setChatLimit({ checked: true, reached: true, resetAt: data.resetAt || null });
+          setMessages(messages);
+          setInput(userMessage);
+
+          setGlobalFeedback({
+            type: 'error',
+            title: 'Free message limit reached',
+            message: `You are out of Free Messages until ${formatResetTime(data.resetAt)}.`
+          });
+          return;
+        }
+
+        throw new Error(data?.message || 'The legal assistant could not process the request.');
+      }
 
       const botText = data?.text;
       if (!botText) throw new Error('The legal assistant returned an empty response.');
+
+      // The 10th message still gets answered, but the same response tells
+      // us the lockout just started -- lock the composer immediately
+      // rather than waiting for the user's next attempt to be rejected.
+      if (data?.chatLimit?.resetAt) {
+        setChatLimit({ checked: true, reached: true, resetAt: data.chatLimit.resetAt });
+      }
 
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
@@ -1094,6 +1234,14 @@ const Chatbot = ({ onLogout }) => {
           setMessages(finalMessages);
           setTypingMessage('');
           saveChatHistory(finalMessages);
+
+          if (data?.chatLimit?.resetAt) {
+            setGlobalFeedback({
+              type: 'error',
+              title: 'Free message limit reached',
+              message: `You are out of Free Messages until ${formatResetTime(data.chatLimit.resetAt)}.`
+            });
+          }
         }
       }, 30);
     } catch (error) {
@@ -1126,6 +1274,15 @@ const Chatbot = ({ onLogout }) => {
   const isWelcome = messages.length === 1 && messages[0].sender === 'bot';
   const displayName = userName || userEmail.split('@')[0] || 'Account';
   const initials = displayName.trim().charAt(0).toUpperCase() || 'U';
+
+  if (!authChecked) {
+    // Auth state is still being resolved (e.g. right after a page refresh,
+    // while Firebase rehydrates the session) -- show the skeleton matching
+    // the real chat layout instead of flashing "Login required", which
+    // was misleading since the user may well already be logged in and we
+    // just don't know it yet.
+    return <Loading variant="chatbot" />;
+  }
 
   if (!userId) {
     return (
@@ -1200,11 +1357,20 @@ const Chatbot = ({ onLogout }) => {
 
           <div id="chat-history" className="sidebar-history-header">
             <span>Recent conversations</span>
-            <span className="sidebar-history-count">{filteredHistory.length}</span>
+            <span className="sidebar-history-count">{isLoadingHistory ? '' : filteredHistory.length}</span>
           </div>
 
           <div className="sidebar-history-scroll">
-            {filteredHistory.length === 0 ? (
+            {isLoadingHistory ? (
+              [1, 2, 3].map(item => (
+                <div key={item} className="sidebar-history-item" style={{ cursor: 'default' }}>
+                  <div className="sidebar-history-main">
+                    <span className="skeleton" style={{ width: '30px', height: '30px', borderRadius: 'var(--radius-full)', flexShrink: 0 }} />
+                    <span className="skeleton" style={{ width: '120px', height: '10px', borderRadius: 'var(--radius-full)' }} />
+                  </div>
+                </div>
+              ))
+            ) : filteredHistory.length === 0 ? (
               <div className="sidebar-empty-history">
                 <div className="sidebar-empty-icon"><Icon name="clock" size={23} /></div>
                 <div className="sidebar-empty-title">{historySearch ? 'No matches found' : 'No conversations yet'}</div>
@@ -1907,27 +2073,35 @@ const Chatbot = ({ onLogout }) => {
         </section>
 
         <section className="composer-area">
-          <div className="composer-card">
-            <div className="composer-hint">
-              <Icon name="spark" size={18} />
-              <span>Ask a question about Pakistani law...</span>
-            </div>
+          <div className={`composer-card ${chatLimit.reached ? 'locked' : ''}`}>
+            {chatLimit.reached ? (
+              <div className="composer-hint composer-hint-warning">
+                <Icon name="lock" size={18} />
+                <span>You're out of free messages. Access resumes at {formatResetTime(chatLimit.resetAt)}.</span>
+              </div>
+            ) : (
+              <div className="composer-hint">
+                <Icon name="spark" size={18} />
+                <span>Ask a question about Pakistani law...</span>
+              </div>
+            )}
 
             <div className="composer-input-row">
               <input
                 ref={inputRef}
                 className="composer-input"
                 type="text"
-                placeholder="Describe your legal question..."
+                placeholder={chatLimit.reached ? 'Free message limit reached' : 'Describe your legal question...'}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                disabled={chatLimit.reached}
               />
               <button
                 type="button"
-                className={`composer-send-btn ${input.trim() ? 'active' : 'disabled'}`}
+                className={`composer-send-btn ${input.trim() && !chatLimit.reached ? 'active' : 'disabled'}`}
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() || chatLimit.reached}
                 aria-label="Send message"
               >
                 <Icon name="send" size={19} stroke={2} />

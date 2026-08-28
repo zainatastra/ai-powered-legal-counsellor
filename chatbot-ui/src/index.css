@@ -2866,6 +2866,11 @@ pre {
   box-shadow: var(--shadow-lg);
 }
 
+.composer-card.locked {
+  border-color: var(--legal-error-border);
+  background: var(--legal-error-bg);
+}
+
 .composer-hint {
   display: flex;
   align-items: center;
@@ -2874,6 +2879,12 @@ pre {
   font-size: var(--fs-md);
   font-weight: var(--fw-medium);
   padding: 2px 6px var(--space-2);
+}
+
+.composer-hint-warning {
+  color: var(--legal-error);
+  font-weight: var(--fw-semibold);
+  animation: fadeIn var(--duration-base) var(--ease-out);
 }
 
 .composer-input-row {
@@ -2902,6 +2913,12 @@ pre {
 .composer-input:focus {
   border-color: var(--legal-gold);
   background: var(--legal-surface);
+}
+
+.composer-input:disabled {
+  background: transparent;
+  color: var(--legal-muted);
+  cursor: not-allowed;
 }
 
 .composer-send-btn {

@@ -279,6 +279,186 @@ function escapeHtml(value = '') {
 }
 
 // -----------------------------------------------------------------------------
+// Chat rate limiting -- three independent layers, from loosest to strictest:
+//
+//   Layer 1 (legalChatLimiter, above): per-IP, 12 req/min. Cheap first line
+//   of defense against unauthenticated/scripted flooding, applied before
+//   auth even runs.
+//
+//   Layer 2 (checkUserRapidFire, below): per authenticated user, in-memory,
+//   resets on server restart. Catches a single user's client misfiring
+//   (double-click, retry loop) much faster than a human would actually
+//   send messages. NOT the user-facing "free plan" limit -- just abuse
+//   prevention layered on top of it.
+//
+//   Layer 3 (consumeFreeChatMessage/getChatLimitStatus, below): the actual
+//   product quota. Persisted in Firestore, keyed by uid, so it is
+//   completely independent of the browser -- it holds across page
+//   refresh, logout/login, a different device, clearing local storage,
+//   anything. 10 free messages; the 10th message is allowed through and
+//   simultaneously starts a 5-hour lockout; after 5 hours the count resets
+//   and the user gets 10 more.
+// -----------------------------------------------------------------------------
+
+const CHAT_USER_RAPID_WINDOW_MS = 60 * 1000;
+const CHAT_USER_RAPID_MAX = 6;
+const chatRapidFireMap = new Map(); // uid -> { count, windowStart }
+
+function checkUserRapidFire(uid) {
+  const now = Date.now();
+  const entry = chatRapidFireMap.get(uid);
+
+  if (!entry || now - entry.windowStart >= CHAT_USER_RAPID_WINDOW_MS) {
+    chatRapidFireMap.set(uid, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (entry.count >= CHAT_USER_RAPID_MAX) {
+    return false;
+  }
+
+  entry.count += 1;
+  return true;
+}
+
+// Periodic sweep so chatRapidFireMap doesn't grow forever on a long-running
+// process -- this is just an in-memory abuse guard, nothing here needs to
+// survive a restart.
+setInterval(() => {
+  const now = Date.now();
+  for (const [uid, entry] of chatRapidFireMap.entries()) {
+    if (now - entry.windowStart >= CHAT_USER_RAPID_WINDOW_MS) {
+      chatRapidFireMap.delete(uid);
+    }
+  }
+}, 10 * 60 * 1000).unref();
+
+const CHAT_MESSAGE_LIMIT_COLLECTION = 'chatMessageLimits';
+const CHAT_FREE_MESSAGE_LIMIT = 10;
+const CHAT_LOCKOUT_MS = 5 * 60 * 60 * 1000; // exactly 5 hours
+
+function getChatLimitRef(uid) {
+  return adminDb.collection(CHAT_MESSAGE_LIMIT_COLLECTION).doc(uid);
+}
+
+/*
+ * Atomically consumes one free message for this uid.
+ *
+ * - If currently locked out (a previous 10th message started a still-active
+ *   5-hour window), rejects without touching the count.
+ * - If the previous lockout window has fully expired, transparently starts
+ *   a fresh cycle (count reset to 0) and this call becomes message #1 of
+ *   that new cycle.
+ * - The message that brings the running count to exactly
+ *   CHAT_FREE_MESSAGE_LIMIT (the 10th) is itself ALLOWED through, and this
+ *   same write starts the 5-hour lockout -- so the 10th message still gets
+ *   an answer, but the 11th is rejected immediately.
+ */
+async function consumeFreeChatMessage(uid) {
+  const ref = getChatLimitRef(uid);
+
+  return adminDb.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const data = snapshot.exists ? snapshot.data() : null;
+    const now = Date.now();
+
+    const blockedUntil = data?.blockedUntil?.toDate?.();
+    const isCurrentlyBlocked = Boolean(
+      blockedUntil && blockedUntil.getTime() > now
+    );
+
+    if (isCurrentlyBlocked) {
+      return { allowed: false, resetAt: blockedUntil, remaining: 0 };
+    }
+
+    const windowExpired = Boolean(
+      blockedUntil && blockedUntil.getTime() <= now
+    );
+
+    const currentCount = windowExpired ? 0 : Number(data?.count || 0);
+    const newCount = currentCount + 1;
+
+    if (newCount >= CHAT_FREE_MESSAGE_LIMIT) {
+      const newBlockedUntil = new Date(now + CHAT_LOCKOUT_MS);
+
+      transaction.set(ref, {
+        uid,
+        count: newCount,
+        blockedUntil: admin.firestore.Timestamp.fromDate(newBlockedUntil),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return { allowed: true, resetAt: newBlockedUntil, remaining: 0 };
+    }
+
+    transaction.set(ref, {
+      uid,
+      count: newCount,
+      blockedUntil: null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      allowed: true,
+      resetAt: null,
+      remaining: CHAT_FREE_MESSAGE_LIMIT - newCount
+    };
+  });
+}
+
+/*
+ * Read-only status check (used by the frontend on page load/refresh so the
+ * "you're out of free messages" banner is correct immediately, without
+ * needing a failed send attempt first). Lazily resets an expired lockout
+ * so status stays accurate even if nobody sends a message right at the
+ * 5-hour mark.
+ */
+async function getChatLimitStatus(uid) {
+  const ref = getChatLimitRef(uid);
+  const snapshot = await ref.get();
+
+  if (!snapshot.exists) {
+    return {
+      limitReached: false,
+      resetAt: null,
+      remaining: CHAT_FREE_MESSAGE_LIMIT
+    };
+  }
+
+  const data = snapshot.data();
+  const now = Date.now();
+  const blockedUntil = data?.blockedUntil?.toDate?.();
+
+  if (blockedUntil && blockedUntil.getTime() > now) {
+    return { limitReached: true, resetAt: blockedUntil, remaining: 0 };
+  }
+
+  if (blockedUntil && blockedUntil.getTime() <= now) {
+    await ref.set({
+      uid,
+      count: 0,
+      blockedUntil: null,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+      limitReached: false,
+      resetAt: null,
+      remaining: CHAT_FREE_MESSAGE_LIMIT
+    };
+  }
+
+  return {
+    limitReached: false,
+    resetAt: null,
+    remaining: Math.max(
+      0,
+      CHAT_FREE_MESSAGE_LIMIT - Number(data?.count || 0)
+    )
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Health check
 // -----------------------------------------------------------------------------
 
@@ -1705,8 +1885,11 @@ app.post(
       });
     }
 
+    let uid;
+
     try {
-      await adminAuth.verifyIdToken(idToken);
+      const decodedToken = await adminAuth.verifyIdToken(idToken);
+      uid = decodedToken.uid;
     } catch (error) {
       console.error(
         'Legal chat authentication failed:',
@@ -1716,6 +1899,15 @@ app.post(
       return res.status(401).json({
         message:
           'Your authentication session has expired. Please log in again.'
+      });
+    }
+
+    // Layer 2: per-user rapid-fire guard (see comment at the top of this
+    // file where checkUserRapidFire is defined).
+    if (!checkUserRapidFire(uid)) {
+      return res.status(429).json({
+        message:
+          'Too many requests. Please slow down and try again shortly.'
       });
     }
 
@@ -1739,6 +1931,38 @@ app.post(
       return res.status(503).json({
         message:
           'The AI service is not configured on the server.'
+      });
+    }
+
+    // Layer 3: the strict 10-messages-per-5-hours free quota. Deliberately
+    // checked here -- after the validation above (so an empty message or a
+    // missing API key never burns a free message), but before the OpenAI
+    // call (so a blocked request never costs anything). A genuine OpenAI
+    // failure *after* this point still consumes the slot; that's an
+    // accepted edge case rather than adding a compensating refund for a
+    // rare failure mode.
+    let chatLimitResult;
+
+    try {
+      chatLimitResult = await consumeFreeChatMessage(uid);
+    } catch (error) {
+      console.error(
+        'Chat limit check failed:',
+        { message: error?.message }
+      );
+
+      return res.status(500).json({
+        message:
+          'Unable to process your request right now. Please try again.'
+      });
+    }
+
+    if (!chatLimitResult.allowed) {
+      return res.status(429).json({
+        message:
+          'You are out of Free Messages. Please try again later.',
+        limitReached: true,
+        resetAt: chatLimitResult.resetAt.toISOString()
       });
     }
 
@@ -1772,7 +1996,13 @@ app.post(
       }
 
       return res.json({
-        text
+        text,
+        chatLimit: {
+          remaining: chatLimitResult.remaining,
+          resetAt: chatLimitResult.resetAt
+            ? chatLimitResult.resetAt.toISOString()
+            : null
+        }
       });
     } catch (error) {
       console.error(
@@ -1813,6 +2043,55 @@ app.post(
       return res.status(502).json({
         message:
           'The AI service could not process the request right now.'
+      });
+    }
+  }
+);
+
+// -----------------------------------------------------------------------------
+// Chat free-message limit status (read-only check, no OpenAI call)
+//
+// The frontend calls this on mount/refresh so the "out of free messages"
+// banner and locked composer are correct immediately -- without needing a
+// failed send attempt first. Backed by the same Firestore-persisted state
+// as /api/legal-chat, so it is accurate across refresh, logout/login, a
+// different device, or clearing local storage.
+// -----------------------------------------------------------------------------
+
+app.post(
+  '/api/legal-chat/limit-status',
+  async (req, res) => {
+    const idToken =
+      typeof req.body?.idToken === 'string'
+        ? req.body.idToken.trim()
+        : '';
+
+    if (!idToken) {
+      return res.status(401).json({
+        message:
+          'Authentication is required.'
+      });
+    }
+
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(idToken);
+      const status = await getChatLimitStatus(decodedToken.uid);
+
+      return res.json({
+        ok: true,
+        limitReached: status.limitReached,
+        remaining: status.remaining,
+        resetAt: status.resetAt ? status.resetAt.toISOString() : null
+      });
+    } catch (error) {
+      console.error(
+        'Chat limit status check failed:',
+        { code: error?.code, message: error?.message }
+      );
+
+      return res.status(401).json({
+        message:
+          'Unable to verify the authentication session.'
       });
     }
   }
