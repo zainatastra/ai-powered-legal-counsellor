@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 
 function App() {
-  const [page, setPage] = useState('signup');
+  const [page, setPage] = useState('login');
   const [user, setUser] = useState(null);
 
   const [verificationEmail, setVerificationEmail] =
@@ -92,7 +92,7 @@ function App() {
             } else {
               setVerificationEmail('');
 
-              setPage('signup');
+              setPage('login');
             }
 
             setAuthReady(true);

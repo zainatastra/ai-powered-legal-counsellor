@@ -210,6 +210,29 @@ const formatSessionDate = (timestamp) => {
   return `${datePart} at ${timePart}`;
 };
 
+// Lightweight, client-side chat title generator -- no extra AI call, so it
+// costs nothing and is instant. Falls back sensibly for bare greetings.
+const GREETING_ONLY = /^(hi+|hey+|hello+|salam\w*|assalam\w*|good\s?(morning|afternoon|evening))[\s!.,]*$/i;
+
+const generateSmartTitle = (text) => {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return 'New Conversation';
+  if (GREETING_ONLY.test(trimmed)) return 'General Inquiry';
+
+  const cleaned = trimmed
+    .replace(/\s+/g, ' ')
+    .replace(/^(please|can you|could you|i want to know|i need to know|i need|tell me about|what is|what are|how do i|how can i)\s+/i, '');
+
+  const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  const withoutPunct = capitalized.replace(/[?.!]+$/, '');
+
+  if (withoutPunct.length <= 42) return withoutPunct;
+
+  const truncated = withoutPunct.slice(0, 42);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated).trim() + '…';
+};
+
 const sortSessions = (items) => [...items].sort((a, b) => {
   const aTime = a.createdAt?.toMillis?.() || new Date(a.createdAt || 0).getTime() || 0;
   const bTime = b.createdAt?.toMillis?.() || new Date(b.createdAt || 0).getTime() || 0;
@@ -234,6 +257,8 @@ const Chatbot = ({ onLogout }) => {
   ]);
   const [input, setInput] = useState('');
   const [typingMessage, setTypingMessage] = useState('');
+  const [isResponding, setIsResponding] = useState(false);
+  const [titleTyping, setTitleTyping] = useState({ chatId: null, text: '' });
   const [userId, setUserId] = useState(null);
   const [chatHistoryList, setChatHistoryList] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
@@ -241,6 +266,7 @@ const Chatbot = ({ onLogout }) => {
   const [newTitle, setNewTitle] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
+  const [userFirstName, setUserFirstName] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 900);
@@ -252,6 +278,9 @@ const Chatbot = ({ onLogout }) => {
   const [deleteAccountConsentOpen, setDeleteAccountConsentOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [deleteChatsConsentOpen, setDeleteChatsConsentOpen] = useState(false);
+  const [logoutConsentOpen, setLogoutConsentOpen] = useState(false);
+  const [chatPendingDeletion, setChatPendingDeletion] = useState(null);
+  const [deleteChatLoading, setDeleteChatLoading] = useState(false);
   const [deleteChatsLoading, setDeleteChatsLoading] = useState(false);
   const [accountDeleted, setAccountDeleted] = useState(false);
   const [globalFeedback, setGlobalFeedback] = useState({ type: null, title: '', message: '' });
@@ -333,6 +362,7 @@ const Chatbot = ({ onLogout }) => {
         // accounts that may not have a complete profile document.
         const resolvedName = firestoreFullName || providerDisplayName.trim() || emailName || 'Account';
         setUserName(resolvedName);
+        setUserFirstName(firstName || resolvedName.split(' ')[0] || '');
         setProfileNameInput(resolvedName);
         setProfileAvatarUrl(profileData.photoURL || user.photoURL || '');
         setAuthChecked(true);
@@ -591,7 +621,7 @@ const Chatbot = ({ onLogout }) => {
 
     window.addEventListener('keydown', handleGlobalTyping);
     return () => window.removeEventListener('keydown', handleGlobalTyping);
-  }, []);
+  }, [authChecked, userId]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1011,7 +1041,7 @@ const Chatbot = ({ onLogout }) => {
     };
   }, [isSettingUpTwoFactor, totpUri]);
 
-  const handleLogout = async () => {
+  const confirmLogout = async () => {
     setIsAccountMenuOpen(false);
     const currentSessionId = sessionIdRef.current;
 
@@ -1029,6 +1059,11 @@ const Chatbot = ({ onLogout }) => {
       // Deliberately do not call onLogout here. The Firebase auth-state
       // change is the source of truth and avoids any parent confirm dialog.
     }
+  };
+
+  const handleLogout = () => {
+    setIsAccountMenuOpen(false);
+    setLogoutConsentOpen(true);
   };
 
   const handleRevokeSession = async (session) => {
@@ -1093,13 +1128,30 @@ const Chatbot = ({ onLogout }) => {
         createdAt: serverTimestamp()
       });
     } else {
+      const firstUserText = newMessages.find(m => m.sender === 'user')?.text || '';
+      const smartTitle = generateSmartTitle(firstUserText);
+
       const newChatRef = await addDoc(collection(db, 'chatHistory'), {
         userId,
         messages: newMessages,
         createdAt: serverTimestamp(),
-        title: 'New Chat'
+        title: smartTitle
       });
       setActiveChatId(newChatRef.id);
+
+      // Type the title out professionally rather than having it snap in --
+      // the real title is already saved above, this just animates its
+      // reveal in the sidebar.
+      let i = 0;
+      setTitleTyping({ chatId: newChatRef.id, text: '' });
+      const titleInterval = setInterval(() => {
+        i++;
+        setTitleTyping({ chatId: newChatRef.id, text: smartTitle.slice(0, i) });
+        if (i >= smartTitle.length) {
+          clearInterval(titleInterval);
+          setTitleTyping({ chatId: null, text: '' });
+        }
+      }, 35);
     }
 
     await fetchChatHistoryList(userId);
@@ -1120,15 +1172,25 @@ const Chatbot = ({ onLogout }) => {
     await fetchChatHistoryList(userId);
   };
 
-  const handleDeleteChat = async (chatId) => {
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      await deleteDoc(doc(db, 'chatHistory', chatId));
+  const handleDeleteChat = (chatId) => {
+    setChatPendingDeletion(chatId);
+  };
+
+  const confirmDeleteChat = async () => {
+    if (!chatPendingDeletion) return;
+    setDeleteChatLoading(true);
+
+    try {
+      await deleteDoc(doc(db, 'chatHistory', chatPendingDeletion));
       await fetchChatHistoryList(userId);
 
-      if (activeChatId === chatId) {
+      if (activeChatId === chatPendingDeletion) {
         setMessages([{ sender: 'bot', text: 'Hello! How can I help you today?' }]);
         setActiveChatId(null);
       }
+    } finally {
+      setDeleteChatLoading(false);
+      setChatPendingDeletion(null);
     }
   };
 
@@ -1142,7 +1204,7 @@ const Chatbot = ({ onLogout }) => {
 
   const handleSend = async () => {
     const userMessage = input.trim();
-    if (!userMessage) return;
+    if (!userMessage || isResponding) return;
 
     // Strictly server-driven: if the last known status says we're locked
     // out, don't even attempt the request or touch the chat -- just
@@ -1163,6 +1225,7 @@ const Chatbot = ({ onLogout }) => {
     setMessages(updatedMessages);
     setInput('');
     setTypingMessage('');
+    setIsResponding(true);
 
     try {
       // SECURITY FIX: /api/legal-chat now requires authentication on the
@@ -1201,6 +1264,7 @@ const Chatbot = ({ onLogout }) => {
           setChatLimit({ checked: true, reached: true, resetAt: data.resetAt || null });
           setMessages(messages);
           setInput(userMessage);
+          setIsResponding(false);
 
           setGlobalFeedback({
             type: 'error',
@@ -1223,16 +1287,20 @@ const Chatbot = ({ onLogout }) => {
         setChatLimit({ checked: true, reached: true, resetAt: data.chatLimit.resetAt });
       }
 
+      // Slicing by index (rather than appending to previous state) so
+      // every tick is self-correcting -- fixes a bug where the first
+      // character of the response could be dropped.
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
-        if (currentIndex < botText.length) {
-          setTypingMessage(prev => prev + botText[currentIndex]);
-          currentIndex++;
-        } else {
+        currentIndex++;
+        setTypingMessage(botText.slice(0, currentIndex));
+
+        if (currentIndex >= botText.length) {
           clearInterval(typingInterval);
           const finalMessages = [...updatedMessages, { sender: 'bot', text: botText }];
           setMessages(finalMessages);
           setTypingMessage('');
+          setIsResponding(false);
           saveChatHistory(finalMessages);
 
           if (data?.chatLimit?.resetAt) {
@@ -1256,6 +1324,7 @@ const Chatbot = ({ onLogout }) => {
       }
 
       setMessages(prev => [...prev, { sender: 'bot', text: userFacingMessage }]);
+      setIsResponding(false);
     }
   };
 
@@ -1399,7 +1468,11 @@ const Chatbot = ({ onLogout }) => {
                           <button type="button" onClick={e => { e.stopPropagation(); handleRenameChat(chat.id); }} className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>Save</button>
                         </div>
                       ) : (
-                        <span className="sidebar-history-title">{chat.title || chat.messages?.[0]?.text?.slice(0, 34) || 'New Chat'}</span>
+                        <span className="sidebar-history-title">
+                          {titleTyping.chatId === chat.id
+                            ? titleTyping.text
+                            : (chat.title || chat.messages?.[0]?.text?.slice(0, 34) || 'New Chat')}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1445,7 +1518,7 @@ const Chatbot = ({ onLogout }) => {
                 <div className="account-dropup-user">
                   <div className="account-icon-lg"><Icon name="user" size={21} /></div>
                   <div className="account-dropup-identity">
-                    <div className="account-dropup-name">{displayName}</div>
+                    <div className="account-dropup-name">{userFirstName || displayName}</div>
                     <div className="account-dropup-email">{userEmail || 'No email available'}</div>
                   </div>
                 </div>
@@ -1474,7 +1547,7 @@ const Chatbot = ({ onLogout }) => {
               <button type="button" onClick={() => setIsAccountMenuOpen(prev => !prev)} className="account-trigger" aria-expanded={isAccountMenuOpen}>
                 <div className="account-icon"><Icon name="user" size={19} /></div>
                 <div className="account-trigger-identity">
-                  <div className="account-trigger-name">{displayName}</div>
+                  <div className="account-trigger-name">{userFirstName || displayName}</div>
                   <div className="account-trigger-email">{userEmail || 'No email available'}</div>
                 </div>
                 <Icon name={isAccountMenuOpen ? 'chevronDown' : 'chevronUp'} size={18} />
@@ -1990,6 +2063,25 @@ const Chatbot = ({ onLogout }) => {
         loading={deleteAccountLoading}
       />
 
+      <ConsentModal
+        open={logoutConsentOpen}
+        title="Log out — are you sure?"
+        message="You'll need to sign in again to continue using the legal assistant."
+        onCancel={() => setLogoutConsentOpen(false)}
+        onConfirm={confirmLogout}
+        confirmText="Yes, Log Out"
+      />
+
+      <ConsentModal
+        open={Boolean(chatPendingDeletion)}
+        title="Delete conversation — are you sure?"
+        message="This will permanently delete this conversation. This action cannot be undone."
+        onCancel={() => setChatPendingDeletion(null)}
+        onConfirm={confirmDeleteChat}
+        confirmText="Yes, Delete Conversation"
+        loading={deleteChatLoading}
+      />
+
       <SuccessModal
         open={globalFeedback.type === 'success'}
         title={globalFeedback.title}
@@ -2023,7 +2115,7 @@ const Chatbot = ({ onLogout }) => {
           {isWelcome && (
             <div className="welcome-area">
               <div className="welcome-mark" aria-label="Legal assistance">
-                <Icon name="scale" size={42} stroke={1.55} />
+                <Icon name="scale" size={30} stroke={1.55} />
               </div>
               <div className="welcome-eyebrow">AI-POWERED LEGAL ASSISTANCE</div>
               <h1 className="welcome-title">
@@ -2056,6 +2148,18 @@ const Chatbot = ({ onLogout }) => {
                   </div>
                 </div>
               ))}
+
+              {isResponding && !typingMessage && (
+                <div className="message-row">
+                  <div className="message-avatar">
+                    <img src={headerLogoSrc} alt="AI" />
+                  </div>
+                  <div className="message-bubble bot thinking-bubble">
+                    <span>Thinking</span>
+                    <span className="thinking-dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              )}
 
               {typingMessage && (
                 <div className="message-row">
@@ -2099,9 +2203,9 @@ const Chatbot = ({ onLogout }) => {
               />
               <button
                 type="button"
-                className={`composer-send-btn ${input.trim() && !chatLimit.reached ? 'active' : 'disabled'}`}
+                className={`composer-send-btn ${input.trim() && !chatLimit.reached && !isResponding ? 'active' : 'disabled'}`}
                 onClick={handleSend}
-                disabled={!input.trim() || chatLimit.reached}
+                disabled={!input.trim() || chatLimit.reached || isResponding}
                 aria-label="Send message"
               >
                 <Icon name="send" size={19} stroke={2} />
