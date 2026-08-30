@@ -495,17 +495,13 @@ without prior written permission from the copyright holder.
 
 Third-party libraries, frameworks, APIs, services, trademarks and other external materials remain the property of their respective owners and are subject to their respective licenses and terms.
 
-Designed & Developed By
+DESIGN & DEVELOPMENT
+
 Zain Ul Abideen
-
 Software Engineer
+zain@astrasoftdigital.com
 
-Email: zain@astrasoftdigital.com
-
-Project: AI-Powered Legal Counsellor
-
-Release: Version 2.0
-
-Status: Finalized
+AI-Powered Legal Counsellor
+Version 2.0.0 — Final Release
 
 © 2026 Zain Ul Abideen — All Rights Reserved.
