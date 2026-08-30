@@ -4,7 +4,8 @@ import React, {
   useState
 } from 'react';
 
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 /*
  * SECURITY FIX: this was previously an absolute URL hardcoded to
@@ -20,6 +21,37 @@ import { auth } from './firebase';
 const API_BASE_URL = '';
 
 const OTP_LENGTH = 5;
+
+// FIX: Signup.js saves the entered first/last name to localStorage
+// ('alc_pending_verification_profile'), intending it to be written to the
+// user's Firestore profile once email verification completes -- but
+// nothing ever actually did that write, so users/{uid} never got a
+// firstName/lastName, and the UI silently fell back to an email-derived
+// name everywhere. This performs that write and then clears the
+// localStorage keys, since they're no longer needed after this.
+const persistPendingProfile = async (uid) => {
+  try {
+    const raw = localStorage.getItem('alc_pending_verification_profile');
+    if (!raw) return;
+
+    const profile = JSON.parse(raw);
+    const firstName = (profile?.firstName || '').trim();
+    const lastName = (profile?.lastName || '').trim();
+
+    if (firstName || lastName) {
+      await setDoc(
+        doc(db, 'users', uid),
+        { firstName, lastName },
+        { merge: true }
+      );
+    }
+  } catch (error) {
+    console.error('Failed to persist pending profile:', error);
+  } finally {
+    localStorage.removeItem('alc_pending_verification_profile');
+    localStorage.removeItem('alc_pending_verification_email');
+  }
+};
 
 const RESEND_COOLDOWN = 30;
 
@@ -183,6 +215,13 @@ const EmailVerification = ({
 
       // Already verified
       if (refreshedUser.emailVerified) {
+        // Firestore rules check the ID token's email_verified CLAIM, which
+        // is different from (and can lag behind) the live emailVerified
+        // property just refreshed above -- force the token itself to be
+        // reissued, or the write below silently fails permission checks.
+        await refreshedUser.getIdToken(true);
+        await persistPendingProfile(refreshedUser.uid);
+
         if (onVerified) {
           onVerified(refreshedUser);
         }
@@ -500,6 +539,9 @@ const EmailVerification = ({
       if (
         refreshedUser.emailVerified
       ) {
+        await refreshedUser.getIdToken(true);
+        await persistPendingProfile(refreshedUser.uid);
+
         if (onVerified) {
           onVerified(
             refreshedUser
@@ -580,6 +622,12 @@ const EmailVerification = ({
       setOtp(
         Array(OTP_LENGTH).fill('')
       );
+
+      // Same reasoning as the other two call sites: reload() refreshed the
+      // live emailVerified flag, but Firestore rules check the ID token's
+      // email_verified CLAIM, which needs its own forced refresh.
+      await verifiedUser.getIdToken(true);
+      await persistPendingProfile(verifiedUser.uid);
 
       if (onVerified) {
         setTimeout(() => {

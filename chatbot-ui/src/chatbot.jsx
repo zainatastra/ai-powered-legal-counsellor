@@ -663,17 +663,18 @@ const Chatbot = ({ onLogout }) => {
     const lastName = nameParts.join(' ');
 
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await setDoc(doc(db, 'users', userId), {
         firstName,
         lastName,
         displayName: nextName
-      });
+      }, { merge: true });
 
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: nextName });
       }
 
       setUserName(nextName);
+      setUserFirstName(firstName);
       setProfileNameInput(nextName);
       setActiveAccountModal(null);
     } catch (error) {
