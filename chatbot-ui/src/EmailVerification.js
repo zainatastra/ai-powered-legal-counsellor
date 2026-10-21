@@ -18,7 +18,7 @@ import { doc, setDoc } from 'firebase/firestore';
  * endpoint in production -- which also means the previous
  * isSecureApiEndpoint(...) guard is no longer needed and has been removed.
  */
-const API_BASE_URL = '';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 const OTP_LENGTH = 5;
 

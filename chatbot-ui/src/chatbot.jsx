@@ -31,6 +31,7 @@ import { ConsentModal, SuccessModal, ErrorModal, Toast } from './GlobalFeedback'
 import Loading from './Loading';
 
 const PUBLIC_PATH = process.env.PUBLIC_URL || '';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 const sidebarLogoSrc = `${PUBLIC_PATH}/favicon.png`;
 const headerLogoSrc = `${PUBLIC_PATH}/logo.png`;
 const faviconSrc = `${PUBLIC_PATH}/favicon.png`;
@@ -419,7 +420,7 @@ const Chatbot = ({ onLogout }) => {
         const idToken = await activeUser?.getIdToken();
         if (!idToken) return;
 
-        const response = await fetch('/api/legal-chat/limit-status', {
+        const response = await fetch(API_BASE_URL + '/api/legal-chat/limit-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken })
@@ -691,7 +692,7 @@ const Chatbot = ({ onLogout }) => {
     try {
       const idToken = await currentUser.getIdToken(true);
 
-      const response = await fetch('/api/auth/delete-chats', {
+      const response = await fetch(API_BASE_URL + '/api/auth/delete-chats', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -1247,7 +1248,7 @@ const Chatbot = ({ onLogout }) => {
         throw new Error('Your session has expired. Please log in again.');
       }
 
-      const response = await fetch('/api/legal-chat', {
+      const response = await fetch(API_BASE_URL + '/api/legal-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, message: userMessage })

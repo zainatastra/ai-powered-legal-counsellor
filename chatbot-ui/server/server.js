@@ -19,7 +19,10 @@ dotenv.config({
 // Firebase Admin SDK
 // -----------------------------------------------------------------------------
 
-const serviceAccount = require('./firebase-service-account.json');
+const serviceAccount = require(
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH ||
+  './firebase-service-account.json'
+);
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -92,7 +95,11 @@ const OTP_VERIFY_BLOCK_MS = 60 * 60 * 1000;
 
 const allowedOrigins = new Set([
   'http://localhost:3000',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  ...(process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
 ]);
 
 app.use((req, res, next) => {
@@ -2096,6 +2103,20 @@ app.post(
     }
   }
 );
+
+// -----------------------------------------------------------------------------
+// Static frontend (production: serves the React build from ./build)
+// -----------------------------------------------------------------------------
+
+const BUILD_DIR = path.join(__dirname, 'build');
+
+if (require('fs').existsSync(BUILD_DIR)) {
+  app.use(express.static(BUILD_DIR));
+
+  app.get(/^\/(?!api\/).*/, (req, res) => {
+    res.sendFile(path.join(BUILD_DIR, 'index.html'));
+  });
+}
 
 // -----------------------------------------------------------------------------
 // Start server
